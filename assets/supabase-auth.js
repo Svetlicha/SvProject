@@ -21,6 +21,7 @@
   const usernameInput = document.getElementById('svLoginUsername');
   const passwordInput = document.getElementById('svLoginPassword');
   const passwordToggle = document.getElementById('svPasswordToggle');
+  const rememberInput = document.getElementById('svRememberLogin');
   const submitButton = document.getElementById('svLoginSubmit');
   const errorBox = document.getElementById('svLoginError');
   const appShell = document.getElementById('appShell');
@@ -28,6 +29,114 @@
   let client = null;
   let appStarted = false;
   let statusResetTimer = null;
+  const REMEMBER_PREFERENCE_KEY = 'sv_auth_remember_v1';
+  const REMEMBERED_USERNAME_KEY = 'sv_auth_username_v1';
+  let rememberSession = readStoredValue('localStorage', REMEMBER_PREFERENCE_KEY) !== '0';
+
+  function getBrowserStorage(name) {
+    try {
+      return window[name] || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function readStoredValue(storageName, key) {
+    try {
+      const storage = getBrowserStorage(storageName);
+      return storage ? storage.getItem(key) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function writeStoredValue(storageName, key, value) {
+    try {
+      const storage = getBrowserStorage(storageName);
+      if (storage) storage.setItem(key, value);
+    } catch (_) { }
+  }
+
+  function removeStoredValue(storageName, key) {
+    try {
+      const storage = getBrowserStorage(storageName);
+      if (storage) storage.removeItem(key);
+    } catch (_) { }
+  }
+
+  function createAuthStorage() {
+    return {
+      getItem(key) {
+        if (rememberSession) {
+          return readStoredValue('localStorage', key) || readStoredValue('sessionStorage', key);
+        }
+        removeStoredValue('localStorage', key);
+        return readStoredValue('sessionStorage', key);
+      },
+      setItem(key, value) {
+        const target = rememberSession ? 'localStorage' : 'sessionStorage';
+        const other = rememberSession ? 'sessionStorage' : 'localStorage';
+        writeStoredValue(target, key, value);
+        removeStoredValue(other, key);
+      },
+      removeItem(key) {
+        removeStoredValue('localStorage', key);
+        removeStoredValue('sessionStorage', key);
+      }
+    };
+  }
+
+  function setupRememberLogin() {
+    if (!rememberInput) return;
+    rememberInput.checked = rememberSession;
+    if (rememberSession) {
+      const rememberedUsername = readStoredValue('localStorage', REMEMBERED_USERNAME_KEY);
+      if (rememberedUsername) usernameInput.value = rememberedUsername;
+    }
+    rememberInput.addEventListener('change', () => {
+      rememberSession = rememberInput.checked;
+      writeStoredValue('localStorage', REMEMBER_PREFERENCE_KEY, rememberSession ? '1' : '0');
+      if (!rememberSession) removeStoredValue('localStorage', REMEMBERED_USERNAME_KEY);
+    });
+  }
+
+  function saveRememberPreference(email) {
+    rememberSession = Boolean(rememberInput && rememberInput.checked);
+    writeStoredValue('localStorage', REMEMBER_PREFERENCE_KEY, rememberSession ? '1' : '0');
+    if (rememberSession) writeStoredValue('localStorage', REMEMBERED_USERNAME_KEY, email);
+    else removeStoredValue('localStorage', REMEMBERED_USERNAME_KEY);
+  }
+
+  function delay(milliseconds) {
+    return new Promise(resolve => window.setTimeout(resolve, milliseconds));
+  }
+
+  function isRetryableLoadError(error) {
+    const cause = error && error.cause ? error.cause : {};
+    const status = Number(error && error.status) || Number(cause && cause.status) || 0;
+    const text = `${error && error.message ? error.message : ''} ${cause && cause.message ? cause.message : ''}`;
+    if (status === 401 || status === 403) return false;
+    return !/(invalid\s+jwt|jwt\s+expired|permission\s+denied|row.level.security|unauthorized|forbidden)/i.test(text);
+  }
+
+  async function loadProtectedState(store) {
+    const maxAttempts = 3;
+    let lastError = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const loaded = await store.loadState();
+        if (attempt > 1) console.info(`Supabase data loaded on attempt ${attempt}.`);
+        return loaded;
+      } catch (error) {
+        lastError = error;
+        if (attempt >= maxAttempts || !isRetryableLoadError(error)) throw error;
+        console.warn(`Supabase load attempt ${attempt} failed; retrying.`, error);
+        setBusy(true, `Свързвам отново (${attempt + 1}/${maxAttempts})...`);
+        await delay(700 * attempt);
+      }
+    }
+    throw lastError;
+  }
 
   function renderIcons() {
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
@@ -52,15 +161,28 @@
     );
   }
 
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = src;
-      script.defer = false;
-      script.onload = resolve;
-      script.onerror = () => reject(new Error(`Не успях да заредя ${src}.`));
-      document.body.appendChild(script);
-    });
+  async function loadScript(src) {
+    let lastError = null;
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = src;
+          script.defer = false;
+          script.onload = resolve;
+          script.onerror = () => {
+            script.remove();
+            reject(new Error(`Не успях да заредя ${src}.`));
+          };
+          document.body.appendChild(script);
+        });
+        return;
+      } catch (error) {
+        lastError = error;
+        if (attempt < 2) await delay(500);
+      }
+    }
+    throw lastError;
   }
 
   async function loadApplicationScripts() {
@@ -143,7 +265,7 @@
 
     try {
       const store = window.SVStateStore.create(client, session.user);
-      const loaded = await store.loadState();
+      const loaded = await loadProtectedState(store);
       window.__SV_CLOUD_INITIAL_STATE__ = loaded.state;
       window.SVCloud = {
         active: true,
@@ -204,11 +326,20 @@
       return;
     }
 
+    saveRememberPreference(email);
     setBusy(true, 'Влизам...');
-    const result = await client.auth.signInWithPassword({
-      email,
-      password: passwordInput.value
-    });
+    let result;
+    try {
+      result = await client.auth.signInWithPassword({
+        email,
+        password: passwordInput.value
+      });
+    } catch (error) {
+      console.error('Supabase sign-in request failed:', error);
+      setBusy(false, 'Вход');
+      setError('Няма връзка със Supabase. Провери интернет връзката и опитай отново.');
+      return;
+    }
 
     if (result.error || !result.data || !result.data.session) {
       setBusy(false, 'Вход');
@@ -219,7 +350,11 @@
     }
 
     passwordInput.value = '';
-    await revealApplication(result.data.session);
+    try {
+      await revealApplication(result.data.session);
+    } catch (_) {
+      // revealApplication restores the login screen and shows the user-facing error.
+    }
   }
 
   function setupPasswordToggle() {
@@ -238,6 +373,7 @@
   async function boot() {
     window.addEventListener('sv-cloud-status', handleCloudStatus);
     setupPasswordToggle();
+    setupRememberLogin();
     renderIcons();
 
     if (!validConfig() || !window.supabase || !window.SVStateStore) {
@@ -250,13 +386,22 @@
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: false
+        detectSessionInUrl: false,
+        storage: createAuthStorage()
       }
     });
     window.SVSupabase = client;
     form.addEventListener('submit', signIn);
 
-    const sessionResult = await client.auth.getSession();
+    let sessionResult;
+    try {
+      sessionResult = await client.auth.getSession();
+    } catch (error) {
+      console.error('Supabase session check failed:', error);
+      setBusy(false, 'Вход');
+      setError('Не успях да проверя сесията. Провери интернет връзката и опитай отново.');
+      return;
+    }
     if (sessionResult.error) {
       setError('Не успях да проверя сесията.');
       return;
