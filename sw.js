@@ -1,11 +1,8 @@
-const CACHE_NAME = 'hotel-discounts-supabase-pwa-20260824-2';
+const CACHE_NAME = 'hotel-discounts-supabase-pwa-20260824-3';
 const APP_SHELL = [
   './',
   './index.html',
-  './mobile.html',
   './manifest.webmanifest',
-  './assets/mobile.css',
-  './assets/mobile.js',
   './assets/supabase-auth.css',
   './assets/supabase-state-store.js',
   './assets/supabase-auth.js',
@@ -50,8 +47,7 @@ self.addEventListener('fetch', event => {
         return response;
       }).catch(() => {
         if (event.request.mode === 'navigate') {
-          const fallbackPage = requestUrl.pathname.endsWith('/mobile.html') ? './mobile.html' : './index.html';
-          return caches.match(fallbackPage).then(fallback => fallback || caches.match('./index.html'));
+          return caches.match('./index.html');
         }
         return caches.match(event.request);
       })
