@@ -1,0 +1,19 @@
+{
+  "version": "v203-modular",
+  "status": "stage-1",
+  "note": "The app is runnable with external CSS/JS. Actual section lazy-loading should be migrated one section at a time.",
+  "sections": [
+    { "key": "tasks", "label": "Задачи" },
+    { "key": "hotels", "label": "Хотели" },
+    { "key": "nights", "label": "Нощувки" },
+    { "key": "roomTypes", "label": "Типове стаи" },
+    { "key": "mapping", "label": "Мапинг" },
+    { "key": "prices", "label": "Цени" },
+    { "key": "ultra", "label": "Ултра Ол Инклузив" },
+    { "key": "discounts", "label": "Отстъпки по хотели" },
+    { "key": "discountReservations", "label": "Резервации с отстъпки" },
+    { "key": "email", "label": "Таблица с имейли" },
+    { "key": "contracts", "label": "Договори" },
+    { "key": "cancellations", "label": "Анулации и Депозити" }
+  ]
+}
