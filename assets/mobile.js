@@ -1102,6 +1102,9 @@ const SIDEBAR_COLLAPSE_KEY='hotel_discount_sidebar_collapsed_v164';
 function initSidebarCollapse(){
   const btn=document.getElementById('sidebarToggleBtn');
   if(!btn)return;
+  function isMobileSidebar(){
+    return !!(window.matchMedia&&window.matchMedia('(max-width:950px)').matches);
+  }
   function readCollapsed(){
     try{return localStorage.getItem(SIDEBAR_COLLAPSE_KEY)==='1'}catch(_){return false}
   }
@@ -1109,19 +1112,36 @@ function initSidebarCollapse(){
     try{localStorage.setItem(SIDEBAR_COLLAPSE_KEY,value?'1':'0')}catch(_){ }
   }
   function applyCollapsed(value){
+    if(isMobileSidebar()){
+      document.body.classList.remove('sidebar-collapsed');
+      btn.textContent='◀';
+      btn.setAttribute('aria-pressed','false');
+      btn.setAttribute('title','Скрий лявото меню');
+      btn.setAttribute('aria-label','Скрий лявото меню');
+      return;
+    }
     document.body.classList.toggle('sidebar-collapsed',!!value);
     btn.textContent=value?'▶':'◀';
     btn.setAttribute('aria-pressed',value?'true':'false');
     btn.setAttribute('title',value?'Покажи лявото меню':'Скрий лявото меню');
     btn.setAttribute('aria-label',value?'Покажи лявото меню':'Скрий лявото меню');
   }
-  let collapsed=readCollapsed();
+  let collapsed=isMobileSidebar()?false:readCollapsed();
   applyCollapsed(collapsed);
   btn.addEventListener('click',()=>{
+    if(isMobileSidebar()){
+      document.body.classList.remove('mobile-sidebar-open');
+      const mobileMenuBtn=document.getElementById('mobileMenuBtn');
+      if(mobileMenuBtn)mobileMenuBtn.setAttribute('aria-expanded','false');
+      return;
+    }
     collapsed=!document.body.classList.contains('sidebar-collapsed');
     applyCollapsed(collapsed);
     saveCollapsed(collapsed);
     if(activeDateInput||activeRangeInput)window.setTimeout(positionDatePicker,220);
+  });
+  window.addEventListener('resize',()=>{
+    if(isMobileSidebar())applyCollapsed(false);
   });
 }
 initSidebarCollapse();
