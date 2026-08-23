@@ -1,0 +1,20 @@
+# Local/offline launch helpers are not part of the public web deployment.
+FORM_BACKUP_EXTRACTOR.html
+OPEN_DESKTOP_DIRECT.bat
+OPEN_MOBILE_DIRECT.bat
+PRENASYANE_NA_DRUG_KOMPYUTAR.md
+PROJECT_CONTEXT.md
+README_OFFLINE.md
+START_OFFLINE.bat
+START_OFFLINE.ps1
+
+# Never publish local exports, backups, credentials, or environment files.
+*.zip
+*.backup.json
+*.local.json
+.env
+.env.*
+!.env.example
+supabase/.temp/
+form_backups/
+migration_output/
