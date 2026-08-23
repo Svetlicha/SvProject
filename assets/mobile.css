@@ -290,7 +290,19 @@
 
     .sidebar-edge-toggle:hover{background:#1d4ed8}
     body.sidebar-collapsed .sidebar-edge-toggle{left:0}
-    @media(max-width:950px){.sidebar-edge-toggle{display:none!important}}
+    @media(max-width:950px){
+      .sidebar-edge-toggle{display:none!important}
+      body.mobile-sidebar-open .sidebar-edge-toggle{
+        display:inline-flex!important;
+        left:calc(min(88vw, 360px) - 1px)!important;
+        top:50%!important;
+        z-index:2100!important;
+        width:22px!important;
+        height:48px!important;
+        border-radius:0 10px 10px 0!important;
+        box-shadow:0 6px 16px rgba(15,23,42,.24)!important;
+      }
+    }
     .layout,.sidebar,.main{transition:grid-template-columns .2s ease, padding .2s ease, opacity .16s ease, transform .18s ease}
     body.sidebar-collapsed .layout{
       grid-template-columns:minmax(0,1540px);
