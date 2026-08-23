@@ -125,6 +125,26 @@ body.sv-auth-pending {
   height: 19px;
 }
 
+.sv-login-remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  color: #3f5058;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sv-login-remember input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: #0f5f65;
+  cursor: pointer;
+}
+
 .sv-login-submit {
   width: 100%;
   min-height: 42px;
@@ -181,6 +201,37 @@ body.sv-auth-pending {
 .sv-logout-button svg {
   width: 18px;
   height: 18px;
+}
+
+.sv-pwa-install-button {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid #9fc8cb;
+  border-radius: 6px;
+  background: #edf7f7;
+  color: #0f5f65;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sv-pwa-install-button:hover {
+  border-color: #0f5f65;
+  background: #dff0f0;
+}
+
+.sv-pwa-install-button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.sv-pwa-install-button.hidden {
+  display: none !important;
 }
 
 @media (max-width: 520px) {
