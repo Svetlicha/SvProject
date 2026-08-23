@@ -4349,4 +4349,10 @@
 }
 @media(max-width:950px){
   .work-form-frame{height:76vh;min-height:640px}
+  .sidebar-edge-toggle{
+    display:inline-flex!important;
+    left:0!important;
+    top:50%!important;
+    z-index:120!important;
+  }
 }
