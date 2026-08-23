@@ -4,14 +4,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script>
-    if (window.matchMedia('(max-width: 950px)').matches && !new URLSearchParams(window.location.search).has('desktop')) {
-      window.location.replace(new URL('mobile.html', window.location.href).href);
-    }
-  </script>
+  <meta name="theme-color" content="#0f5f65" />
   <title>История на отстъпки по хотели v203 Modular</title>
+  <link rel="manifest" href="manifest.webmanifest?v=20260824-desktop-pwa-1" />
+  <link rel="apple-touch-icon" href="assets/pwa-icon-192.png?v=20260824-desktop-pwa-1" />
   <link rel="stylesheet" href="assets/desktop.css?v=20260808-nights-delete-escape-1" />
-  <link rel="stylesheet" href="assets/supabase-auth.css?v=20260823-1" />
+  <link rel="stylesheet" href="assets/supabase-auth.css?v=20260824-auth-retry-1" />
 </head>
 <body class="sv-auth-pending" data-sv-app="desktop">
 <main class="sv-login-gate" id="svLoginGate">
@@ -31,6 +29,10 @@
         </button>
       </div>
     </div>
+    <label class="sv-login-remember" for="svRememberLogin">
+      <input id="svRememberLogin" type="checkbox" checked />
+      <span>Запомни ме</span>
+    </label>
     <button class="sv-login-submit" id="svLoginSubmit" type="submit">Вход</button>
     <p class="sv-login-error" id="svLoginError" role="alert" aria-live="polite"></p>
   </form>
@@ -40,6 +42,10 @@
   <h1>История на отстъпки по хотели v203 Modular</h1>
   <a class="top-nav-link rescheck-link no-print" href="https://svetlicha.github.io/EffectHotels/" target="_blank" rel="noopener">ResCheck</a>
   <a class="top-nav-link segments-link no-print" href="https://svetlicha.github.io/Segments/" target="_blank" rel="noopener">Segments</a>
+  <button class="sv-pwa-install-button no-print hidden" id="pwaInstallBtn" type="button" title="Инсталирай приложението">
+    <i data-lucide="download" aria-hidden="true"></i>
+    <span>Инсталирай</span>
+  </button>
 </header>
 
 <button class="sidebar-edge-toggle no-print" id="sidebarToggleBtn" type="button" aria-pressed="false" aria-label="Скрий лявото меню" title="Скрий лявото меню">◀</button>
@@ -797,6 +803,34 @@
 <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
 <script src="assets/supabase-config.js?v=20260823-1"></script>
 <script src="assets/supabase-state-store.js?v=20260823-2"></script>
-<script src="assets/supabase-auth.js?v=20260823-2"></script>
+<script src="assets/supabase-auth.js?v=20260824-auth-retry-1"></script>
+<script>
+  (function setupPwaInstall(){
+    var deferredPrompt=null;
+    var installBtn=document.getElementById('pwaInstallBtn');
+    if('serviceWorker' in navigator){
+      window.addEventListener('load',function(){
+        navigator.serviceWorker.register('./sw.js').catch(function(err){console.warn('PWA service worker failed:',err);});
+      });
+    }
+    if(!installBtn)return;
+    window.addEventListener('beforeinstallprompt',function(event){
+      event.preventDefault();
+      deferredPrompt=event;
+      installBtn.classList.remove('hidden');
+    });
+    installBtn.addEventListener('click',async function(){
+      if(!deferredPrompt)return;
+      installBtn.classList.add('hidden');
+      deferredPrompt.prompt();
+      try{await deferredPrompt.userChoice;}catch(err){}
+      deferredPrompt=null;
+    });
+    window.addEventListener('appinstalled',function(){
+      deferredPrompt=null;
+      installBtn.classList.add('hidden');
+    });
+  })();
+</script>
 </body>
 </html>
