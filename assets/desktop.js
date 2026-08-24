@@ -1063,6 +1063,7 @@ let hotelNightsDialog=null;
 let hotelNightsTargetsOpen=false;
 let suppressHotelNightsDialogCloseUntil=0;
 const hotelNightsPreviewDates=new Map();
+const hotelNightsExpandedDateHistory=new Set();
 let advertisementEditingId=null;
 
 
@@ -6172,7 +6173,11 @@ function hotelNightsMonthDateButtons(hotel,year,month,selectedRecordKey){
   const records=hotelNightsMonthRecordedDates(hotel,year,month);
   if(!records.length)return '';
   const latest=records[records.length-1];
-  const buttons=records.map(recordKey=>{
+  const historyKey=hotelNightsPreviewMapKey(hotel&&hotel.id,year,month);
+  const olderRecords=records.slice(0,-7);
+  const recentRecords=records.slice(-7);
+  const expanded=olderRecords.length>0&&hotelNightsExpandedDateHistory.has(historyKey);
+  const makeButton=recordKey=>{
     const date=hotelNightsRecordDateFromKey(recordKey);
     const parts=date.split('-');
     const compact=parts.length===3?`${parts[2]}.${parts[1]}`:date;
@@ -6180,10 +6185,20 @@ function hotelNightsMonthDateButtons(hotel,year,month,selectedRecordKey){
     const isLatest=recordKey===latest;
     const title=`Покажи стойностите към ${full}${isLatest?' (последно въведено)':''}`;
     return `<button type="button" class="hotel-nights-date-chip${recordKey===selectedRecordKey?' active':''}${isLatest?' latest':''}" data-hotel-nights-preview-date="${escapeAttr(recordKey)}" data-year="${year}" data-month="${month}" title="${escapeAttr(title)}">${escapeHtml(compact)}</button>`;
-  }).join('');
-  const manyDates=records.length>6;
-  const layout=manyDates?` style="--nights-date-columns:${Math.ceil(records.length/2)}"`:'';
-  return `<div class="hotel-nights-month-dates${manyDates?' many':''}"${layout} aria-label="Въведени дати">${buttons}</div>`;
+  };
+  const recentButtons=recentRecords.map(makeButton).join('');
+  const olderButtons=expanded?olderRecords.map(makeButton).join(''):'';
+  const toggle=olderRecords.length
+    ? `<button type="button" class="hotel-nights-history-toggle${expanded?' expanded':''}" data-toggle-hotel-nights-history="${escapeAttr(historyKey)}" title="${expanded?'Скрий по-старите дати':'Покажи по-старите дати'}" aria-label="${expanded?'Скрий по-старите дати':'Покажи по-старите дати'}" aria-expanded="${expanded?'true':'false'}">${expanded?'−':'+'}</button>`
+    : '';
+  return `<div class="hotel-nights-month-dates${expanded?' expanded':''}" aria-label="Въведени дати">${toggle}<div class="hotel-nights-recent-dates">${recentButtons}</div>${olderButtons?`<div class="hotel-nights-older-dates">${olderButtons}</div>`:''}</div>`;
+}
+function toggleHotelNightsDateHistory(historyKey){
+  const key=String(historyKey||'');
+  if(!key)return;
+  if(hotelNightsExpandedDateHistory.has(key))hotelNightsExpandedDateHistory.delete(key);
+  else hotelNightsExpandedDateHistory.add(key);
+  renderHotelNights();
 }
 function selectHotelNightsPreviewDate(hotelId,year,month,recordKey){
   setHotelNightsPreviewRecord(hotelId,year,month,recordKey);
@@ -6488,6 +6503,13 @@ function renderHotelNights(){
     button.addEventListener('click',event=>{
       event.stopPropagation();
       selectHotelNightsPreviewDate(selected.id,Number(button.dataset.year),Number(button.dataset.month),button.dataset.hotelNightsPreviewDate);
+    });
+    button.addEventListener('keydown',event=>event.stopPropagation());
+  });
+  wrap.querySelectorAll('[data-toggle-hotel-nights-history]').forEach(button=>{
+    button.addEventListener('click',event=>{
+      event.stopPropagation();
+      toggleHotelNightsDateHistory(button.dataset.toggleHotelNightsHistory);
     });
     button.addEventListener('keydown',event=>event.stopPropagation());
   });
