@@ -6,7 +6,7 @@
       'assets/section-loader.js',
       'assets/algara-prices-v26-lite-data.js',
       'assets/algara-lite-calculator.js',
-      'assets/desktop.js?v=20260824-nights-last-entry-1'
+      'assets/desktop.js?v=20260824-nights-date-history-2'
     ],
     mobile: [
       'assets/section-loader.js',
@@ -236,8 +236,22 @@
       status.textContent = 'Защитената връзка със Supabase е активна.';
       status.className = 'cloud-status ok';
     }
+    updateLastSupabaseSave(window.SVCloud && window.SVCloud.updatedAt);
     const notice = document.querySelector('.sidebar .notice');
     if (notice) notice.textContent = 'Данните се зареждат и записват защитено в Supabase. Експортът остава допълнително локално копие.';
+  }
+
+  function updateLastSupabaseSave(value) {
+    const label = document.getElementById('supabaseLastSave');
+    if (!label) return;
+    const date = value ? new Date(value) : null;
+    if (!date || Number.isNaN(date.getTime())) {
+      label.hidden = true;
+      label.textContent = '';
+      return;
+    }
+    label.textContent = `Последен запис в Supabase: ${date.toLocaleString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+    label.hidden = false;
   }
 
   function handleCloudStatus(event) {
@@ -247,6 +261,10 @@
     if (statusResetTimer) clearTimeout(statusResetTimer);
     status.textContent = detail.message;
     status.className = `cloud-status ${detail.phase === 'error' ? 'error' : detail.phase === 'saved' || detail.phase === 'loaded' ? 'ok' : ''}`.trim();
+    if ((detail.phase === 'saved' || detail.phase === 'loaded') && detail.updatedAt) {
+      if (window.SVCloud) window.SVCloud.updatedAt = detail.updatedAt;
+      updateLastSupabaseSave(detail.updatedAt);
+    }
     if (detail.phase === 'saved') {
       statusResetTimer = setTimeout(() => {
         statusResetTimer = null;
