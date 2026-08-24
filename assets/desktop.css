@@ -1108,7 +1108,6 @@
     .hotel-nights-month-dates:not(:has(.hotel-nights-history-toggle)){grid-template-columns:minmax(0,1fr)}
     .hotel-nights-recent-dates{display:flex;min-width:0;gap:3px;align-items:center;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
     .hotel-nights-older-dates{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:3px;padding:3px 0 0 25px;border-top:1px dashed var(--section-theme-border,#bfdbfe)}
-    .hotel-nights-last-entry{grid-column:1/-1;color:#64748b;font-size:8.5px;font-weight:700;line-height:11px;text-align:right;white-space:nowrap}
     .hotel-nights-history-toggle{width:22px!important;min-width:22px!important;height:19px!important;min-height:19px!important;padding:0!important;border:1px solid var(--section-theme-accent,#2563eb)!important;border-radius:4px!important;background:#fff!important;color:var(--section-theme-accent,#2563eb)!important;font-size:15px!important;font-weight:900!important;line-height:15px!important}
     .hotel-nights-history-toggle:hover,.hotel-nights-history-toggle.expanded{background:var(--section-theme-accent,#2563eb)!important;color:#fff!important}
     .hotel-nights-date-chip{flex:0 0 auto;min-width:37px;height:19px;padding:1px 4px!important;border:1px solid var(--section-theme-border,#bfdbfe)!important;border-radius:6px!important;background:#fff!important;color:var(--section-theme-text,#1e3a8a)!important;font-size:8.5px!important;font-weight:900!important;line-height:15px!important;white-space:nowrap}
@@ -3180,6 +3179,7 @@
     .cloud-status.ok{color:#047857}
     .cloud-status.error{color:#b91c1c}
     .cloud-status.warn{color:#92400e}
+    .supabase-last-save{margin-top:3px;color:#64748b;font-size:10px;font-weight:700;line-height:1.3}
     .notice{background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:12px;border-radius:14px;font-size:13px;margin-top:14px;line-height:1.45}.search{margin-top:14px}
     @media(max-width:950px){.cancellation-layout{grid-template-columns:1fr}.cancellation-periods{grid-template-columns:1fr 1fr}.cancellation-summary{grid-template-columns:1fr 1fr 1fr}
       .room-info-line{grid-template-columns:24px 1fr}
