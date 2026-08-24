@@ -6173,9 +6173,6 @@ function hotelNightsMonthDateButtons(hotel,year,month,selectedRecordKey){
   const records=hotelNightsMonthRecordedDates(hotel,year,month);
   if(!records.length)return '';
   const latest=records[records.length-1];
-  const latestDate=hotelNightsRecordDateFromKey(latest);
-  const latestParts=latestDate.split('-');
-  const latestDisplay=latestParts.length===3?`${latestParts[2]}.${latestParts[1]}.${latestParts[0]}`:latestDate;
   const historyKey=hotelNightsPreviewMapKey(hotel&&hotel.id,year,month);
   const olderRecords=records.slice(0,-7);
   const recentRecords=records.slice(-7);
@@ -6194,7 +6191,7 @@ function hotelNightsMonthDateButtons(hotel,year,month,selectedRecordKey){
   const toggle=olderRecords.length
     ? `<button type="button" class="hotel-nights-history-toggle${expanded?' expanded':''}" data-toggle-hotel-nights-history="${escapeAttr(historyKey)}" title="${expanded?'Скрий по-старите дати':'Покажи по-старите дати'}" aria-label="${expanded?'Скрий по-старите дати':'Покажи по-старите дати'}" aria-expanded="${expanded?'true':'false'}">${expanded?'−':'+'}</button>`
     : '';
-  return `<div class="hotel-nights-month-dates${expanded?' expanded':''}" aria-label="Въведени дати">${toggle}<div class="hotel-nights-recent-dates">${recentButtons}</div>${olderButtons?`<div class="hotel-nights-older-dates">${olderButtons}</div>`:''}<div class="hotel-nights-last-entry">Последен запис: ${escapeHtml(latestDisplay)}</div></div>`;
+  return `<div class="hotel-nights-month-dates${expanded?' expanded':''}" aria-label="Въведени дати">${toggle}<div class="hotel-nights-recent-dates">${recentButtons}</div>${olderButtons?`<div class="hotel-nights-older-dates">${olderButtons}</div>`:''}</div>`;
 }
 function toggleHotelNightsDateHistory(historyKey){
   const key=String(historyKey||'');
