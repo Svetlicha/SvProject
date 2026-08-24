@@ -8,7 +8,7 @@
   <title>История на отстъпки по хотели v203 Modular</title>
   <link rel="manifest" href="manifest.webmanifest?v=20260824-desktop-pwa-1" />
   <link rel="apple-touch-icon" href="assets/pwa-icon-192.png?v=20260824-desktop-pwa-1" />
-  <link rel="stylesheet" href="assets/desktop.css?v=20260824-nights-last-entry-1" />
+  <link rel="stylesheet" href="assets/desktop.css?v=20260824-supabase-last-save-1" />
   <link rel="stylesheet" href="assets/supabase-auth.css?v=20260824-auth-retry-1" />
 </head>
 <body class="sv-auth-pending" data-sv-app="desktop">
@@ -87,6 +87,7 @@
         <input class="hidden" id="googleBackupFileInput" type="file" accept="application/json,.json" />
       </div>
       <div id="googleSyncStatus" class="cloud-status">URL е скрит. Натисни „URL“ само ако трябва да го промениш.</div>
+      <div id="supabaseLastSave" class="supabase-last-save" hidden></div>
     </div>
     <div class="notice">Данните се пазят в този браузър. Седмиците вляво са групирани по година и месец. За сигурност използвай „Експорт“, за да запазиш архивен JSON файл.</div>
     <div class="week-list" id="weekList"></div>
@@ -802,8 +803,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
 <script src="assets/supabase-config.js?v=20260823-1"></script>
-<script src="assets/supabase-state-store.js?v=20260824-idle-autosave-1"></script>
-<script src="assets/supabase-auth.js?v=20260824-nights-last-entry-1"></script>
+<script src="assets/supabase-state-store.js?v=20260824-supabase-last-save-1"></script>
+<script src="assets/supabase-auth.js?v=20260824-supabase-last-save-1"></script>
 <script>
   (function setupPwaInstall(){
     var deferredPrompt=null;
