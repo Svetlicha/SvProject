@@ -409,6 +409,7 @@
       const detail = {
         phase: 'saved',
         message: 'Запазено в Supabase.',
+        updatedAt: new Date().toISOString(),
         revision: this.revision,
         changes
       };
