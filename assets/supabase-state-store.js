@@ -3,7 +3,7 @@
 
   const PAGE_SIZE = 500;
   const WRITE_CHUNK_SIZE = 100;
-  const AUTOSAVE_DELAY = 3000;
+  const AUTOSAVE_DELAY = 2 * 60 * 1000;
   const MAX_BACKUPS = 12;
 
   const DOCUMENT_FIELDS = Object.freeze({
