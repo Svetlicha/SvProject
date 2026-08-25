@@ -8636,6 +8636,21 @@ function formatReleaseDays(days){
   if(/days?|дни/i.test(clean))return clean;
   return clean+' Days';
 }
+function releaseDateFromToday(days){
+  const match=String(days||'').trim().replace(',','.').match(/-?\d+(?:\.\d+)?/);
+  if(!match)return '';
+  const dayCount=Math.trunc(Number(match[0]));
+  if(!Number.isFinite(dayCount)||dayCount<0)return '';
+  const result=parseISODate(todayISO());
+  result.setDate(result.getDate()+dayCount);
+  return isoToDisplay(toISODate(result));
+}
+function formatReleaseDaysWithDate(days){
+  const daysLabel=formatReleaseDays(days);
+  const dateLabel=releaseDateFromToday(days);
+  if(!daysLabel)return '';
+  return dateLabel?`${daysLabel} → ${dateLabel}`:daysLabel;
+}
 function findActiveReleasePeriod(group){
   const today=releasePeriodDateUTC(todayISO());
   return ((group&&group.releasePeriods)||[]).find(period=>{
@@ -8647,7 +8662,8 @@ function releaseCurrentHtml(group){
   const todayLabel=isoToDisplay(todayISO());
   const active=findActiveReleasePeriod(group);
   if(active){
-    return `<div class="to-release-current active"><span>Днес (${escapeHtml(todayLabel)}) сме в:</span><span class="to-release-days-badge">${escapeHtml(formatReleaseDays(active.days))}</span></div>`;
+    const releaseDate=releaseDateFromToday(active.days);
+    return `<div class="to-release-current active"><span>Днес (${escapeHtml(todayLabel)}) сме в:</span><span class="to-release-days-badge">${escapeHtml(releaseDate?`${releaseDate} (${formatReleaseDays(active.days)})`:formatReleaseDays(active.days))}</span></div>`;
   }
   const hasAny=((group&&group.releasePeriods)||[]).some(period=>String(period.from||'').trim()||String(period.to||'').trim()||String(period.days||'').trim());
   return `<div class="to-release-current ${hasAny?'warn':''}"><span>Днес (${escapeHtml(todayLabel)}):</span><span>${hasAny?'Няма активен Release Period':'Няма въведени Release Period периоди.'}</span></div>`;
@@ -8659,11 +8675,12 @@ function renderReleasePeriodsEdit(group,hotelId,groupId){
     const fromISO=parseReleasePeriodDate(period.from)||'';
     const toISO=parseReleasePeriodDate(period.to)||fromISO;
     const rangeValue=(period.from||period.to)?`${period.from||''}${period.from||period.to?' - ':''}${period.to||''}`:'';
+    const releaseDate=releaseDateFromToday(period.days);
     return `
     <div class="to-release-card">
       <div class="to-release-fields">
         <div><label>Период</label><input class="to-release-range-input" type="text" inputmode="numeric" placeholder="От - До" data-date-range="true" readonly value="${escapeAttr(rangeValue)}" data-from="${escapeAttr(fromISO||todayISO())}" data-to="${escapeAttr(toISO||fromISO||todayISO())}" data-to-release-range="${escapeAttr(hotelId)}" data-group-id="${escapeAttr(groupId)}" data-release-id="${escapeAttr(period.id)}" /></div>
-        <div><label>Days</label><input type="text" value="${escapeAttr(period.days||'')}" placeholder="5" data-to-release-days="${escapeAttr(hotelId)}" data-group-id="${escapeAttr(groupId)}" data-release-id="${escapeAttr(period.id)}" /></div>
+        <div class="to-release-days-field"><label>Days</label><input type="text" value="${escapeAttr(period.days||'')}" placeholder="5" data-to-release-days="${escapeAttr(hotelId)}" data-group-id="${escapeAttr(groupId)}" data-release-id="${escapeAttr(period.id)}" /><span class="to-release-date-preview" data-release-date-preview>${escapeHtml(releaseDate?`→ ${releaseDate} от днес`:'')}</span></div>
         <button class="danger small" type="button" title="Изтрий Release Period" data-delete-to-release-period="${escapeAttr(hotelId)}" data-group-id="${escapeAttr(groupId)}" data-release-id="${escapeAttr(period.id)}">×</button>
       </div>
     </div>`;
@@ -8687,7 +8704,7 @@ function renderReleasePeriodsLocked(group){
     <div class="to-release-locked-item">
       <span class="to-release-pill to-release-pill-period">${escapeHtml((period.from||'—')+' - '+(period.to||'—'))}</span>
       <span class="to-mapping-locked-arrow">→</span>
-      <span class="to-release-pill to-release-pill-days">${escapeHtml(formatReleaseDays(period.days)||'—')}</span>
+      <span class="to-release-pill to-release-pill-days">${escapeHtml(formatReleaseDaysWithDate(period.days)||'—')}</span>
     </div>`).join('')}</div>`:'<div class="empty">Няма въведени Release Period периоди.</div>';
   return `<div class="to-release-section"><div class="to-release-head"><div><strong>Release Period</strong><div class="muted">Активният release се отчита по днешна дата.</div></div></div>${releaseCurrentHtml(group)}${rows}</div>`;
 }
@@ -8891,7 +8908,14 @@ function renderToMappings(hotel){
     input.addEventListener('change',()=>renderToMappings(getSelectedHotel(getActiveWeek())));
   });
   list.querySelectorAll('[data-to-release-days]').forEach(input=>{
-    input.addEventListener('input',e=>updateToMappingReleasePeriod(e.target.dataset.toReleaseDays,e.target.dataset.groupId,e.target.dataset.releaseId,'days',e.target.value,false));
+    input.addEventListener('input',e=>{
+      updateToMappingReleasePeriod(e.target.dataset.toReleaseDays,e.target.dataset.groupId,e.target.dataset.releaseId,'days',e.target.value,false);
+      const preview=e.target.closest('.to-release-days-field')?.querySelector('[data-release-date-preview]');
+      if(preview){
+        const releaseDate=releaseDateFromToday(e.target.value);
+        preview.textContent=releaseDate?`→ ${releaseDate} от днес`:'';
+      }
+    });
     input.addEventListener('change',()=>renderToMappings(getSelectedHotel(getActiveWeek())));
   });
   list.querySelectorAll('[data-delete-to-release-period]').forEach(btn=>{
