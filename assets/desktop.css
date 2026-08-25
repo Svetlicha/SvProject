@@ -2173,6 +2173,19 @@
       font-weight:900;
       border-radius:10px;
     }
+    .to-release-days-field{
+      align-self:start;
+    }
+    .to-release-date-preview{
+      display:block;
+      min-height:14px;
+      margin-top:3px;
+      color:#166534;
+      font-size:10px;
+      font-weight:900;
+      line-height:1.2;
+      white-space:nowrap;
+    }
     .to-release-fields button{
       min-width:26px;
       padding:5px 6px;
