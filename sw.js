@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hotel-discounts-supabase-pwa-20260825-1';
+const CACHE_NAME = 'hotel-discounts-supabase-pwa-20260905-1';
 const APP_SHELL = [
   './',
   './index.html',
@@ -6,6 +6,7 @@ const APP_SHELL = [
   './assets/supabase-auth.css',
   './assets/supabase-state-store.js',
   './assets/supabase-auth.js',
+  './assets/phone-zoom.js?v=20260905-phone-zoom-1',
   './assets/section-loader.js',
   './assets/algara-prices-v26-lite-data.js',
   './assets/algara-lite-calculator.js',
