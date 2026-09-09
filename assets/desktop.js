@@ -442,6 +442,20 @@ function decorateInlineWorkFormHtml(html){
       opacity: 1;
       transform: translateY(0);
     }
+
+    .cell-old-leave { box-shadow: inset 0 0 0 2px #b45309; }
+    .old-leave-mark { display: block; margin-top: 1px; color: #92400e; font-size: 6px; font-weight: 900; line-height: 1; }
+    .old-leave-option { display: none; margin: 0; padding: 10px 12px; border: 1px solid #fcd34d; border-radius: 10px; background: #fffbeb; color: #92400e; font-weight: 900; }
+    .old-leave-option.visible { display: flex; align-items: center; flex-direction: row; gap: 8px; }
+    .old-leave-option input { width: 17px; height: 17px; margin: 0; accent-color: #b45309; }
+    .calendar-leave-summary { margin-top: 12px; padding: 12px; border: 1px solid #bfdbfe; border-radius: 12px; background: #eff6ff; }
+    .calendar-leave-summary h3 { margin: 0; color: #1e3a8a; font-size: 14px; }
+    .calendar-leave-summary p { margin: 3px 0 10px; color: #475569; font-size: 12px; }
+    .calendar-leave-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+    .calendar-leave-summary-person { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border: 1px solid #dbeafe; border-radius: 9px; background: #fff; }
+    .calendar-leave-summary-person strong { color: #172033; font-size: 12px; }
+    .calendar-leave-summary-person span { color: #1d4ed8; font-size: 12px; font-weight: 900; white-space: nowrap; }
+    .calendar-leave-summary-person small { display: block; margin-top: 2px; color: #92400e; font-size: 10px; font-weight: 800; }
 `;
   next=next.replace('\n    .cell-btn {\n',`${noteMarkerCss}\n    .cell-btn {\n`);
   next=next.replace('      const locked = isDateLocked(dateString);\n\n      if (record.status === "work") {','      const locked = isDateLocked(dateString);\n      const noteText = record.note ? String(record.note).trim() : "";\n      const hasNote = !!noteText;\n      if (hasNote) cls += " has-note";\n      const noteAttrs = hasNote\n        ? ` data-note-text="${escapeAttr(noteText)}" onmouseenter="showCellNoteTooltip(event, this)" onmousemove="moveCellNoteTooltip(event)" onmouseleave="hideCellNoteTooltip()"`\n        : "";\n\n      if (record.status === "work") {');
@@ -504,6 +518,70 @@ function decorateInlineWorkFormHtml(html){
 
 `;
   next=next.replace('    function showLockedCellSummary(event, employeeIndex, dateString) {',`${noteTooltipScript}    function showLockedCellSummary(event, employeeIndex, dateString) {`);
+  const leaveSummaryScript=`
+    const originalRenderAttendanceTableForLeaveSummary = renderAttendanceTable;
+    const originalRenderCellForLeaveSummary = renderCell;
+    const originalOpenCellEditorForLeaveSummary = openCellEditor;
+    const originalToggleCellEditorFieldsForLeaveSummary = toggleCellEditorFields;
+    const originalGetCellRecordForLeaveSummary = getCellRecord;
+    function isOldLeave(record) { return Boolean(record && record.status === "leave" && record.leaveFromPreviousYear); }
+    getCellRecord = function(employeeIndex, dateString) {
+      const record = originalGetCellRecordForLeaveSummary(employeeIndex, dateString);
+      const raw = state.records && state.records[recordKey(employeeIndex, dateString)];
+      if (raw && typeof raw === "object" && raw.leaveFromPreviousYear) record.leaveFromPreviousYear = true;
+      return record;
+    };
+    function ensureOldLeaveOption() {
+      let option = document.getElementById("cellOldLeaveOption");
+      if (option) return option;
+      const actions = document.querySelector("#cellModal .modal-actions");
+      if (!actions) return null;
+      option = document.createElement("label"); option.id = "cellOldLeaveOption"; option.className = "old-leave-option";
+      option.innerHTML = '<input id="cellOldLeave" type="checkbox" /> От стара отпуска'; actions.parentNode.insertBefore(option, actions); return option;
+    }
+    function refreshOldLeaveOption() {
+      const option = ensureOldLeaveOption(); if (!option) return;
+      const status = document.getElementById("cellStatus"); option.classList.toggle("visible", Boolean(status && status.value === "leave"));
+    }
+    function calendarLeaveTotals() {
+      const year = String(state.selectedYear || ""); const totals = state.employees.map(function() { return { used: 0, old: 0 }; });
+      Object.keys(state.records || {}).forEach(function(key) {
+        const match = key.match(/^(\\d+)_(\\d{4})-/); const value = state.records[key];
+        if (!match || match[2] !== year || !value || typeof value !== "object" || value.status !== "leave") return;
+        const index = Number(match[1]); if (!totals[index]) return; if (isOldLeave(value)) totals[index].old += 1; else totals[index].used += 1;
+      }); return totals;
+    }
+    function renderCalendarLeaveSummary() {
+      const tableWrap = document.querySelector("#formPanel .table-wrap"); if (!tableWrap) return;
+      let summary = document.getElementById("calendarLeaveSummary");
+      if (!summary) { summary = document.createElement("section"); summary.id = "calendarLeaveSummary"; summary.className = "calendar-leave-summary"; tableWrap.insertAdjacentElement("afterend", summary); }
+      const totals = calendarLeaveTotals(); const people = state.employees.map(function(employee, index) {
+        const total = totals[index] || { used: 0, old: 0 }; const name = escapeHTML(employee.name || ("Служител " + (index + 1)));
+        const oldText = total.old ? '<small>Стара отпуска: ' + total.old + ' дни</small>' : '';
+        return '<div class="calendar-leave-summary-person"><div><strong>' + name + '</strong>' + oldText + '</div><span>' + total.used + ' дни</span></div>';
+      }).join("");
+      summary.innerHTML = '<h3>Използван отпуск за ' + escapeHTML(String(state.selectedYear)) + '</h3><p>Включва само отпуските от текущата календарна година.</p><div class="calendar-leave-summary-grid">' + people + '</div>';
+    }
+    renderCell = function(employeeIndex, dateString, record) {
+      let cell = originalRenderCellForLeaveSummary(employeeIndex, dateString, record);
+      if (isOldLeave(record)) { cell = cell.replace("cell-leave", "cell-leave cell-old-leave"); cell = cell.replace('<span class="hours">О</span>', '<span class="hours">О<small class="old-leave-mark">ст.</small></span>'); }
+      return cell;
+    };
+    renderAttendanceTable = function() { originalRenderAttendanceTableForLeaveSummary(); renderCalendarLeaveSummary(); };
+    openCellEditor = function(employeeIndex, dateString) {
+      originalOpenCellEditorForLeaveSummary(employeeIndex, dateString); const checkbox = document.getElementById("cellOldLeave");
+      if (checkbox) checkbox.checked = isOldLeave(getCellRecord(employeeIndex, dateString)); refreshOldLeaveOption();
+    };
+    toggleCellEditorFields = function() { originalToggleCellEditorFieldsForLeaveSummary(); refreshOldLeaveOption(); };
+    saveCellRecord = function() {
+      const employeeIndex = Number(document.getElementById("cellEmployeeIndex").value); const dateString = document.getElementById("cellDate").value;
+      if (isDateLocked(dateString)) return; const status = document.getElementById("cellStatus").value; const key = recordKey(employeeIndex, dateString);
+      if (!status) delete state.records[key];
+      else { const oldLeave = Boolean(document.getElementById("cellOldLeave") && document.getElementById("cellOldLeave").checked); state.records[key] = { status: status, hours: status === "work" ? Number(document.getElementById("cellHours").value || 8) : 0, hotelOverride: status === "work" ? document.getElementById("cellHotel").value : "", hotelOverride2: status === "work" ? document.getElementById("cellHotel2").value : "", replaces: status === "work" ? document.getElementById("cellReplaces").value : "", note: document.getElementById("cellNote").value.trim(), leaveFromPreviousYear: status === "leave" && oldLeave }; }
+      saveState(); closeCellEditor(); renderAttendanceTable();
+    };
+`;
+  next=next.replace('    boot();',`${leaveSummaryScript}\n    boot();`);
   return next;
 }
 function renderWorkForm(){
