@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hotel-discounts-supabase-pwa-20260905-1';
+const CACHE_NAME = 'hotel-discounts-supabase-pwa-20260909-1';
 const APP_SHELL = [
   './',
   './index.html',
