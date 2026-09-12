@@ -456,8 +456,19 @@ function decorateInlineWorkFormHtml(html){
     .calendar-leave-summary-person strong { color: #172033; font-size: 12px; }
     .calendar-leave-summary-person span { color: #1d4ed8; font-size: 12px; font-weight: 900; white-space: nowrap; }
     .calendar-leave-summary-person small { display: block; margin-top: 2px; color: #92400e; font-size: 10px; font-weight: 800; }
+    #employeeSettings .employee-row { grid-template-columns: 34px minmax(160px, 1fr) 132px 132px 96px; }
+    .employee-release-date { border-color: #fbbf24 !important; background: #fffbeb !important; }
+    .week-hotel-pair { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr); gap: 8px; }
+    .week-hotel-pair select { min-width: 0 !important; }
+    .week-second-hotel { border-color: #86efac !important; background: #f0fdf4 !important; }
+    @media (max-width: 760px) { #employeeSettings .employee-row { grid-template-columns: 34px minmax(140px, 1fr) 1fr; } #employeeSettings .employee-row .hotel-toggle { grid-column: 2 / -1; } .week-hotel-pair { grid-template-columns: 1fr; } }
 `;
   next=next.replace('\n    .cell-btn {\n',`${noteMarkerCss}\n    .cell-btn {\n`);
+  next=next.replace('const employee = state.employees[i] || { name: "", hireDate: "", showHotel: true };','const employee = state.employees[i] || { name: "", hireDate: "", releaseDate: "", showHotel: true };');
+  next=next.replace('          <input id="empHire${i}" data-date-picker="1" value="${escapeAttr(formatDate(employee.hireDate || ""))}" placeholder="dd.mm.yyyy" title="Дата на назначаване" />\n          <label class="hotel-toggle"','          <input id="empHire${i}" data-date-picker="1" value="${escapeAttr(formatDate(employee.hireDate || ""))}" placeholder="Назначен от" title="Дата на назначаване" />\n          <input id="empRelease${i}" class="employee-release-date" data-date-picker="1" value="${escapeAttr(formatDate(employee.releaseDate || ""))}" placeholder="Освободен от" title="Дата на освобождаване" />\n          <label class="hotel-toggle"');
+  next=next.replaceAll('        showHotel: document.getElementById(`empShowHotel${i}`).checked\n      }));','        showHotel: document.getElementById(`empShowHotel${i}`).checked,\n        releaseDate: parseBGDate(document.getElementById(`empRelease${i}`).value) || ""\n      }));');
+  next=next.replace('      state.employees.forEach((emp, employeeIndex) => {\n        let totalHours = 0;','      state.employees.forEach((emp, employeeIndex) => {\n        if (!shouldShowEmployeeForAttendanceMonth(emp, year, month)) return;\n        let totalHours = 0;');
+  next=next.replace('        const hotel2 = record.hotelOverride2 || "";','        const hotel2 = record.hotelOverride2 || getWeeklyHotel2(employeeIndex, dateString);');
   next=next.replace('      const locked = isDateLocked(dateString);\n\n      if (record.status === "work") {','      const locked = isDateLocked(dateString);\n      const noteText = record.note ? String(record.note).trim() : "";\n      const hasNote = !!noteText;\n      if (hasNote) cls += " has-note";\n      const noteAttrs = hasNote\n        ? ` data-note-text="${escapeAttr(noteText)}" onmouseenter="showCellNoteTooltip(event, this)" onmousemove="moveCellNoteTooltip(event)" onmouseleave="hideCellNoteTooltip()"`\n        : "";\n\n      if (record.status === "work") {');
   next=next.replace('          class="${cls}" \n          title="','          class="${cls}" \n          ${noteAttrs}\n          title="');
   next=next.replace('          title="${locked ? "Р”Р°С‚Р°С‚Р° Рµ Р·Р°РєР»СЋС‡РµРЅР°" : "РљР»РёРє: СЃРјСЏРЅР° РЅР° СЃС‚Р°С‚СѓСЃ | Р”РµСЃРµРЅ РєР»РёРє: РїРѕРґСЂРѕР±РЅР° СЂРµРґР°РєС†РёСЏ"}"\n          onclick="${clickHandler}"','          title="${hasNote ? escapeAttr(noteText) : (locked ? "Р”Р°С‚Р°С‚Р° Рµ Р·Р°РєР»СЋС‡РµРЅР°" : "РљР»РёРє: СЃРјСЏРЅР° РЅР° СЃС‚Р°С‚СѓСЃ | Р”РµСЃРµРЅ РєР»РёРє: РїРѕРґСЂРѕР±РЅР° СЂРµРґР°РєС†РёСЏ")}"\n          ${noteAttrs}\n          onclick="${clickHandler}"');
@@ -519,6 +530,22 @@ function decorateInlineWorkFormHtml(html){
 `;
   next=next.replace('    function showLockedCellSummary(event, employeeIndex, dateString) {',`${noteTooltipScript}    function showLockedCellSummary(event, employeeIndex, dateString) {`);
   const leaveSummaryScript=`
+    function shouldShowEmployeeForAttendanceMonth(employee, year, month) {
+      const releaseDate = employee && employee.releaseDate ? String(employee.releaseDate) : "";
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(releaseDate)) return true;
+      const releaseYear = Number(releaseDate.slice(0, 4));
+      const releaseMonth = Number(releaseDate.slice(5, 7)) - 1;
+      return year < releaseYear || (year === releaseYear && month <= releaseMonth);
+    }
+    function shouldShowEmployeeForSelectedWeek(employee) {
+      const weekDate = parseISO(state.selectedWeekStart);
+      return shouldShowEmployeeForAttendanceMonth(employee, weekDate.getFullYear(), weekDate.getMonth());
+    }
+    function getWeeklyHotel2(employeeIndex, dateString) {
+      const weekStart = getMondayISO(parseISO(dateString));
+      const data = state.weeklyAssignments[weekStart] || {};
+      return data[employeeIndex]?.hotel2 || "";
+    }
     const originalRenderAttendanceTableForLeaveSummary = renderAttendanceTable;
     const originalRenderCellForLeaveSummary = renderCell;
     const originalOpenCellEditorForLeaveSummary = openCellEditor;
@@ -579,6 +606,82 @@ function decorateInlineWorkFormHtml(html){
       if (!status) delete state.records[key];
       else { const oldLeave = Boolean(document.getElementById("cellOldLeave") && document.getElementById("cellOldLeave").checked); state.records[key] = { status: status, hours: status === "work" ? Number(document.getElementById("cellHours").value || 8) : 0, hotelOverride: status === "work" ? document.getElementById("cellHotel").value : "", hotelOverride2: status === "work" ? document.getElementById("cellHotel2").value : "", replaces: status === "work" ? document.getElementById("cellReplaces").value : "", note: document.getElementById("cellNote").value.trim(), leaveFromPreviousYear: status === "leave" && oldLeave }; }
       saveState(); closeCellEditor(); renderAttendanceTable();
+    };
+
+    const originalRenderEmployeeSettingsForEmployment = renderEmployeeSettings;
+    renderEmployeeSettings = function() {
+      originalRenderEmployeeSettingsForEmployment();
+      document.querySelectorAll('#employeeSettings .employee-row').forEach(function(row) {
+        const index = Number(row.dataset.index);
+        const employee = state.employees[index] || {};
+        const release = document.getElementById('empRelease' + index);
+        if (release) release.value = formatDate(employee.releaseDate || '');
+      });
+    };
+
+    const originalRenderWeekSummaryForEmployment = renderWeekSummary;
+    renderWeekSummary = function() {
+      const container = document.getElementById('weekSummary');
+      if (!container) return originalRenderWeekSummaryForEmployment();
+      const data = state.weeklyAssignments[state.selectedWeekStart] || {};
+      const rows = [];
+      state.employees.forEach(function(employee, index) {
+        if (!shouldShowEmployeeForSelectedWeek(employee)) return;
+        const assignment = data[index] || {};
+        const hotels = [assignment.hotel, assignment.hotel2].filter(Boolean);
+        if (hotels.length) rows.push('<div class="week-summary-row"><b>' + escapeHTML(employee.name || ('Служител ' + (index + 1))) + '</b> → ' + hotels.map(escapeHTML).join(' + ') + '</div>');
+      });
+      container.innerHTML = rows.length ? rows.join('') : '<div class="small-note">Все още няма запазено разпределение за тази седмица.</div>';
+    };
+
+    const originalRenderWeeklyPanelForEmployment = renderWeeklyPanel;
+    renderWeeklyPanel = function() {
+      originalRenderWeeklyPanelForEmployment();
+      const weekData = state.weeklyAssignments[state.selectedWeekStart] || {};
+      state.employees.forEach(function(employee, index) {
+        const primary = document.getElementById('weekHotel' + index);
+        if (!primary) return;
+        const row = primary.closest('tr');
+        if (!shouldShowEmployeeForSelectedWeek(employee)) { if (row) row.style.display = 'none'; return; }
+        if (primary.disabled || document.getElementById('weekHotel2' + index)) return;
+        const assignment = weekData[index] || {};
+        const pair = document.createElement('div');
+        pair.className = 'week-hotel-pair';
+        const second = document.createElement('select');
+        second.id = 'weekHotel2' + index;
+        second.className = 'week-second-hotel';
+        second.innerHTML = '<option value="">- втори обект -</option>' + state.hotels.map(function(hotel) { return '<option value="' + escapeAttr(hotel) + '"' + (assignment.hotel2 === hotel ? ' selected' : '') + '>' + escapeHTML(hotel) + '</option>'; }).join('');
+        primary.parentNode.insertBefore(pair, primary);
+        pair.appendChild(primary);
+        pair.appendChild(second);
+      });
+    };
+
+    saveWeeklyAssignments = function() {
+      const weekData = {};
+      state.employees.forEach(function(employee, index) {
+        if (!shouldShowEmployeeForSelectedWeek(employee)) return;
+        const primary = document.getElementById('weekHotel' + index);
+        const secondary = document.getElementById('weekHotel2' + index);
+        const hotel = primary && !primary.disabled ? primary.value : '';
+        const hotel2 = secondary && !secondary.disabled ? secondary.value : '';
+        const noteInput = document.getElementById('weekNote' + index);
+        const note = noteInput ? noteInput.value.trim() : '';
+        if (hotel || hotel2 || note) weekData[index] = { hotel: hotel, hotel2: hotel2, note: note };
+      });
+      state.weeklyAssignments[state.selectedWeekStart] = weekData;
+      saveState(); renderWeeklyPanel(); applyFormScale(); renderAttendanceTable();
+      alert('Седмичното разпределение е запазено.');
+    };
+
+    const originalRenderCalendarLeaveSummaryForEmployment = renderCalendarLeaveSummary;
+    renderCalendarLeaveSummary = function() {
+      originalRenderCalendarLeaveSummaryForEmployment();
+      const summary = document.getElementById('calendarLeaveSummary');
+      if (!summary) return;
+      Array.from(summary.querySelectorAll('.calendar-leave-summary-person')).forEach(function(card, index) {
+        if (!shouldShowEmployeeForAttendanceMonth(state.employees[index], state.selectedYear, state.selectedMonth)) card.remove();
+      });
     };
 `;
   next=next.replace('    boot();',`${leaveSummaryScript}\n    boot();`);
