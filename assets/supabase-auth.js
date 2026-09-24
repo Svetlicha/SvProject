@@ -6,7 +6,7 @@
       'assets/section-loader.js',
       'assets/algara-prices-v26-lite-data.js',
       'assets/algara-lite-calculator.js',
-      'assets/desktop.js?v=20260924-form-single-row-selection-1'
+      'assets/desktop.js?v=20260924-form-bulk-delete-1'
     ],
     mobile: [
       'assets/section-loader.js',
