@@ -756,6 +756,56 @@ function decorateInlineWorkFormHtml(html){
     };
     const originalRenderAttendanceTableForBulk = renderAttendanceTable;
     renderAttendanceTable = function() { originalRenderAttendanceTableForBulk(); renderBulkSelectionBar(); };
+
+    renderBulkSelectionBar = function() { const bar = document.getElementById('bulkSelectionBar'); if (bar) bar.remove(); };
+    let bulkDragActive = false;
+    let bulkDragMoved = false;
+    let bulkDragLastKey = '';
+    let bulkSuppressClick = false;
+    function getBulkCellTarget(target) { return target && target.closest ? target.closest('[data-bulk-cell]') : null; }
+    function addBulkDraggedCell(element) {
+      const raw = element && element.dataset ? element.dataset.bulkCell : '';
+      const parts = raw.split('|'); const employeeIndex = Number(parts[0]); const dateString = parts[1] || '';
+      if (!dateString || isDateLocked(dateString)) return false;
+      const key = bulkCellKey(employeeIndex, dateString);
+      if (key === bulkDragLastKey) return false;
+      bulkDragLastKey = key; bulkSelectedCells.add(key); element.classList.add('cell-bulk-selected'); return true;
+    }
+    const originalRenderCellForDragBulk = renderCell;
+    renderCell = function(employeeIndex, dateString, record) {
+      let cell = originalRenderCellForDragBulk(employeeIndex, dateString, record);
+      return cell.replace('<div ', '<div data-bulk-cell="' + employeeIndex + '|' + dateString + '" ');
+    };
+    document.addEventListener('pointerdown', function(event) {
+      if (event.button !== 0) return;
+      const cell = getBulkCellTarget(event.target); if (!cell) return;
+      const raw = cell.dataset.bulkCell || ''; const parts = raw.split('|');
+      if (!parts[1] || isDateLocked(parts[1])) return;
+      bulkDragActive = true; bulkDragMoved = false; bulkDragLastKey = '';
+      bulkSelectedCells.clear(); addBulkDraggedCell(cell); event.preventDefault();
+    }, true);
+    document.addEventListener('pointerover', function(event) {
+      if (!bulkDragActive) return;
+      const cell = getBulkCellTarget(event.target); if (!cell) return;
+      if (addBulkDraggedCell(cell)) bulkDragMoved = true;
+    }, true);
+    document.addEventListener('pointerup', function() {
+      if (!bulkDragActive) return;
+      bulkDragActive = false; bulkSuppressClick = true;
+      if (bulkDragMoved && bulkSelectedCells.size > 1) { renderAttendanceTable(); openBulkCellEditor(); }
+      else {
+        const key = bulkDragLastKey; bulkSelectedCells.clear();
+        const parts = key.split('_'); const employeeIndex = Number(parts.shift()); const dateString = parts.join('_');
+        if (dateString) originalCycleCellStatusForBulk(employeeIndex, dateString);
+      }
+      bulkDragLastKey = '';
+    }, true);
+    document.addEventListener('pointercancel', function() { bulkDragActive = false; bulkSelectedCells.clear(); bulkDragLastKey = ''; }, true);
+    document.addEventListener('click', function(event) {
+      if (!bulkSuppressClick) return;
+      bulkSuppressClick = false; event.preventDefault(); event.stopImmediatePropagation();
+    }, true);
+    document.addEventListener('keydown', function(event) { if (event.key === 'Escape' && document.getElementById('bulkCellModal')) closeBulkCellEditor(); });
 `;
   next=next.replace('    boot();',`${leaveSummaryScript}\n    boot();`);
   return next;
