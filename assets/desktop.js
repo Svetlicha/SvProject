@@ -456,6 +456,16 @@ function decorateInlineWorkFormHtml(html){
     .calendar-leave-summary-person strong { color: #172033; font-size: 12px; }
     .calendar-leave-summary-person span { color: #1d4ed8; font-size: 12px; font-weight: 900; white-space: nowrap; }
     .calendar-leave-summary-person small { display: block; margin-top: 2px; color: #92400e; font-size: 10px; font-weight: 800; }
+    .cell-bulk-selected { outline: 3px solid #7c3aed !important; outline-offset: -3px; box-shadow: inset 0 0 0 2px #ede9fe !important; }
+    .bulk-selection-bar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 10px; padding:9px 10px; border:1px solid #c4b5fd; border-radius:10px; background:#faf5ff; }
+    .bulk-selection-bar strong { color:#5b21b6; font-size:13px; }
+    .bulk-selection-bar .bulk-selection-count { color:#6b21a8; font-size:12px; font-weight:900; }
+    .bulk-selection-bar .bulk-selection-hint { color:#64748b; font-size:11px; font-weight:700; }
+    .bulk-selection-bar button.bulk-active { background:#6d28d9 !important; border-color:#5b21b6 !important; color:#fff !important; }
+    .form-bulk-modal { width:min(460px,100%); }
+    .form-bulk-modal .modal-body { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .form-bulk-modal .modal-body .bulk-modal-help { grid-column:1 / -1; margin:0; color:#64748b; font-size:12px; line-height:1.4; }
+    @media (max-width: 760px) { .bulk-selection-bar { align-items:flex-start; } .form-bulk-modal .modal-body { grid-template-columns:1fr; } }
     #employeeSettings .employee-row { grid-template-columns: 34px minmax(160px, 1fr) 132px 132px 96px; }
     .employee-release-date { border-color: #fbbf24 !important; background: #fffbeb !important; }
     .week-hotel-pair { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr); gap: 8px; }
@@ -684,6 +694,68 @@ function decorateInlineWorkFormHtml(html){
         if (!shouldShowEmployeeForAttendanceMonth(state.employees[index], state.selectedYear, state.selectedMonth)) card.remove();
       });
     };
+
+    const bulkSelectedCells = new Set();
+    let bulkSelectionMode = false;
+    function bulkCellKey(employeeIndex, dateString) { return String(employeeIndex) + '_' + dateString; }
+    function renderBulkSelectionBar() {
+      const table = document.getElementById('attendanceTable');
+      const tableWrap = table && table.closest('.table-wrap');
+      if (!tableWrap) return;
+      let bar = document.getElementById('bulkSelectionBar');
+      if (!bar) { bar = document.createElement('div'); bar.id = 'bulkSelectionBar'; bar.className = 'bulk-selection-bar'; tableWrap.parentNode.insertBefore(bar, tableWrap); }
+      const count = bulkSelectedCells.size;
+      bar.innerHTML = '<button type="button" class="secondary-btn ' + (bulkSelectionMode ? 'bulk-active' : '') + '" onclick="toggleBulkSelectionMode()">' + (bulkSelectionMode ? 'Готово с избора' : 'Избери дни') + '</button><strong>Групова промяна</strong><span class="bulk-selection-count">Избрани: ' + count + '</span><button type="button" class="primary-btn" onclick="openBulkCellEditor()"' + (count ? '' : ' disabled') + '>Промени избраните</button><button type="button" class="secondary-btn" onclick="clearBulkCellSelection()"' + (count ? '' : ' disabled') + '>Изчисти</button><span class="bulk-selection-hint">' + (bulkSelectionMode ? 'Натисни върху свободни клетки, за да ги маркираш.' : 'Избери дни, после приложи една промяна за всички.') + '</span>';
+    }
+    function toggleBulkSelectionMode() { bulkSelectionMode = !bulkSelectionMode; renderAttendanceTable(); }
+    function clearBulkCellSelection() { bulkSelectedCells.clear(); bulkSelectionMode = false; renderAttendanceTable(); }
+    function toggleBulkCellSelection(employeeIndex, dateString) {
+      if (isDateLocked(dateString)) return;
+      const key = bulkCellKey(employeeIndex, dateString);
+      if (bulkSelectedCells.has(key)) bulkSelectedCells.delete(key); else bulkSelectedCells.add(key);
+      renderAttendanceTable();
+    }
+    function closeBulkCellEditor() { const modal = document.getElementById('bulkCellModal'); if (modal) modal.remove(); }
+    function openBulkCellEditor() {
+      if (!bulkSelectedCells.size) return;
+      closeBulkCellEditor();
+      const modal = document.createElement('div');
+      modal.id = 'bulkCellModal'; modal.className = 'modal-backdrop active'; modal.addEventListener('click', function(event) { if (event.target === modal) closeBulkCellEditor(); });
+      modal.innerHTML = '<div class="modal form-bulk-modal" role="dialog" aria-modal="true" aria-label="Групова промяна" onclick="event.stopPropagation()"><div class="modal-header"><h3>Промени ' + bulkSelectedCells.size + ' избрани дни</h3><button type="button" class="icon-btn" onclick="closeBulkCellEditor()" aria-label="Затвори">×</button></div><div class="modal-body"><p class="bulk-modal-help">Избери само полетата, които искаш да промениш. При „Без промяна“ съществуващите данни остават такива, каквито са.</p><label class="field">Статус<select id="bulkCellStatus"><option value="">Без промяна</option><option value="work">Работа</option><option value="leave">О - отпуск</option><option value="off">П - почивка</option></select></label><label class="field">Часове<select id="bulkCellHours"><option value="">Без промяна</option><option value="4">4 часа</option><option value="6">6 часа</option><option value="8">8 часа</option></select></label></div><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeBulkCellEditor()">Отказ</button><button type="button" class="primary-btn" onclick="applyBulkCellChanges()">Приложи</button></div></div>';
+      document.body.appendChild(modal);
+    }
+    function applyBulkCellChanges() {
+      const statusInput = document.getElementById('bulkCellStatus'); const hoursInput = document.getElementById('bulkCellHours');
+      if (!statusInput || !hoursInput) return;
+      const status = statusInput.value; const hours = hoursInput.value === '' ? null : Number(hoursInput.value);
+      if (!status && hours === null) { closeBulkCellEditor(); return; }
+      bulkSelectedCells.forEach(function(key) {
+        const parts = key.split('_'); const employeeIndex = Number(parts.shift()); const dateString = parts.join('_');
+        if (!dateString || isDateLocked(dateString)) return;
+        const existing = getCellRecord(employeeIndex, dateString);
+        const record = { status: existing.status || '', hours: Number(existing.hours || 8), hotelOverride: existing.hotelOverride || '', hotelOverride2: existing.hotelOverride2 || '', replaces: existing.replaces || '', note: existing.note || '', leaveFromPreviousYear: Boolean(existing.leaveFromPreviousYear) };
+        if (status) {
+          record.status = status;
+          if (status === 'work') { record.hours = hours === null ? (Number(existing.hours) || 8) : hours; record.leaveFromPreviousYear = false; }
+          else { record.hours = 0; record.hotelOverride = ''; record.hotelOverride2 = ''; record.replaces = ''; if (status !== 'leave') record.leaveFromPreviousYear = false; }
+        } else if (hours !== null && record.status === 'work') record.hours = hours;
+        if (record.status) state.records[recordKey(employeeIndex, dateString)] = record;
+      });
+      bulkSelectedCells.clear(); bulkSelectionMode = false; saveState(); closeBulkCellEditor(); renderAttendanceTable();
+    }
+    const originalCycleCellStatusForBulk = cycleCellStatus;
+    cycleCellStatus = function(employeeIndex, dateString) {
+      if (bulkSelectionMode) { toggleBulkCellSelection(employeeIndex, dateString); return; }
+      originalCycleCellStatusForBulk(employeeIndex, dateString);
+    };
+    const originalRenderCellForBulk = renderCell;
+    renderCell = function(employeeIndex, dateString, record) {
+      let cell = originalRenderCellForBulk(employeeIndex, dateString, record);
+      if (bulkSelectedCells.has(bulkCellKey(employeeIndex, dateString))) cell = cell.replace('class="cell-btn', 'class="cell-btn cell-bulk-selected');
+      return cell;
+    };
+    const originalRenderAttendanceTableForBulk = renderAttendanceTable;
+    renderAttendanceTable = function() { originalRenderAttendanceTableForBulk(); renderBulkSelectionBar(); };
 `;
   next=next.replace('    boot();',`${leaveSummaryScript}\n    boot();`);
   return next;
