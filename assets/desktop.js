@@ -462,6 +462,7 @@ function decorateInlineWorkFormHtml(html){
     .bulk-selection-bar .bulk-selection-count { color:#6b21a8; font-size:12px; font-weight:900; }
     .bulk-selection-bar .bulk-selection-hint { color:#64748b; font-size:11px; font-weight:700; }
     .bulk-selection-bar button.bulk-active { background:#6d28d9 !important; border-color:#5b21b6 !important; color:#fff !important; }
+    .form-drag-hint { margin:0 0 8px; color:#52606d; font-size:12px; line-height:1.35; }
     .form-bulk-modal { width:min(460px,100%); }
     .form-bulk-modal .modal-body { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .form-bulk-modal .modal-body .bulk-modal-help { grid-column:1 / -1; margin:0; color:#64748b; font-size:12px; line-height:1.4; }
@@ -757,7 +758,17 @@ function decorateInlineWorkFormHtml(html){
     const originalRenderAttendanceTableForBulk = renderAttendanceTable;
     renderAttendanceTable = function() { originalRenderAttendanceTableForBulk(); renderBulkSelectionBar(); };
 
-    renderBulkSelectionBar = function() { const bar = document.getElementById('bulkSelectionBar'); if (bar) bar.remove(); };
+    renderBulkSelectionBar = function() {
+      const bar = document.getElementById('bulkSelectionBar');
+      if (bar) bar.remove();
+      const table = document.querySelector('.att-table');
+      if (!table || document.getElementById('formDragHint')) return;
+      const hint = document.createElement('p');
+      hint.id = 'formDragHint';
+      hint.className = 'form-drag-hint';
+      hint.textContent = 'Плъзни с левия бутон през свободни дни, за да ги промениш наведнъж.';
+      table.insertAdjacentElement('beforebegin', hint);
+    };
     let bulkDragActive = false;
     let bulkDragMoved = false;
     let bulkDragLastKey = '';
