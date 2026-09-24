@@ -766,21 +766,50 @@ function decorateInlineWorkFormHtml(html){
       const hint = document.createElement('p');
       hint.id = 'formDragHint';
       hint.className = 'form-drag-hint';
-      hint.textContent = 'Плъзни с левия бутон през свободни дни, за да ги промениш наведнъж.';
+      hint.textContent = 'Маркирай с плъзгане, Ctrl или Shift; с десен бутон отвори общата промяна.';
       table.insertAdjacentElement('beforebegin', hint);
     };
     let bulkDragActive = false;
     let bulkDragMoved = false;
     let bulkDragLastKey = '';
     let bulkSuppressClick = false;
+    let bulkSelectionAnchor = null;
     function getBulkCellTarget(target) { return target && target.closest ? target.closest('[data-bulk-cell]') : null; }
-    function addBulkDraggedCell(element) {
+    function getBulkCellDetails(element) {
       const raw = element && element.dataset ? element.dataset.bulkCell : '';
       const parts = raw.split('|'); const employeeIndex = Number(parts[0]); const dateString = parts[1] || '';
-      if (!dateString || isDateLocked(dateString)) return false;
-      const key = bulkCellKey(employeeIndex, dateString);
-      if (key === bulkDragLastKey) return false;
-      bulkDragLastKey = key; bulkSelectedCells.add(key); element.classList.add('cell-bulk-selected'); return true;
+      if (!dateString || isDateLocked(dateString)) return null;
+      return { employeeIndex, dateString, key: bulkCellKey(employeeIndex, dateString) };
+    }
+    function markBulkCell(element, toggle) {
+      const details = getBulkCellDetails(element);
+      if (!details) return null;
+      if (toggle && bulkSelectedCells.has(details.key)) {
+        bulkSelectedCells.delete(details.key);
+        element.classList.remove('cell-bulk-selected');
+      } else {
+        bulkSelectedCells.add(details.key);
+        element.classList.add('cell-bulk-selected');
+      }
+      return details;
+    }
+    function markBulkRange(element) {
+      const target = getBulkCellDetails(element);
+      if (!target) return null;
+      if (!bulkSelectionAnchor || bulkSelectionAnchor.employeeIndex !== target.employeeIndex) {
+        bulkSelectedCells.clear();
+        markBulkCell(element, false);
+        return target;
+      }
+      const start = new Date(bulkSelectionAnchor.dateString + 'T00:00:00');
+      const end = new Date(target.dateString + 'T00:00:00');
+      const direction = start <= end ? 1 : -1;
+      for (let date = new Date(start); direction > 0 ? date <= end : date >= end; date.setDate(date.getDate() + direction)) {
+        const dateString = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+        const rangeCell = document.querySelector('[data-bulk-cell="' + target.employeeIndex + '|' + dateString + '"]');
+        if (rangeCell) markBulkCell(rangeCell, false);
+      }
+      return target;
     }
     const originalRenderCellForDragBulk = renderCell;
     renderCell = function(employeeIndex, dateString, record) {
@@ -790,33 +819,58 @@ function decorateInlineWorkFormHtml(html){
     document.addEventListener('pointerdown', function(event) {
       if (event.button !== 0) return;
       const cell = getBulkCellTarget(event.target); if (!cell) return;
-      const raw = cell.dataset.bulkCell || ''; const parts = raw.split('|');
-      if (!parts[1] || isDateLocked(parts[1])) return;
+      const details = getBulkCellDetails(cell); if (!details) return;
+      if (event.ctrlKey || event.metaKey || event.shiftKey) {
+        const selected = event.shiftKey ? markBulkRange(cell) : markBulkCell(cell, true);
+        if (selected) bulkSelectionAnchor = selected;
+        bulkSuppressClick = true;
+        renderAttendanceTable();
+        event.preventDefault();
+        return;
+      }
       bulkDragActive = true; bulkDragMoved = false; bulkDragLastKey = '';
-      bulkSelectedCells.clear(); addBulkDraggedCell(cell); event.preventDefault();
+      bulkSelectedCells.clear(); markBulkCell(cell, false); bulkSelectionAnchor = details; bulkDragLastKey = details.key; event.preventDefault();
     }, true);
     document.addEventListener('pointerover', function(event) {
       if (!bulkDragActive) return;
       const cell = getBulkCellTarget(event.target); if (!cell) return;
-      if (addBulkDraggedCell(cell)) bulkDragMoved = true;
+      const details = getBulkCellDetails(cell);
+      if (details && details.key !== bulkDragLastKey) {
+        markBulkCell(cell, false); bulkDragLastKey = details.key; bulkDragMoved = true;
+      }
     }, true);
     document.addEventListener('pointerup', function() {
       if (!bulkDragActive) return;
       bulkDragActive = false; bulkSuppressClick = true;
-      if (bulkDragMoved && bulkSelectedCells.size > 1) { renderAttendanceTable(); openBulkCellEditor(); }
+      if (bulkDragMoved && bulkSelectedCells.size > 1) { renderAttendanceTable(); }
       else {
         const key = bulkDragLastKey; bulkSelectedCells.clear();
         const parts = key.split('_'); const employeeIndex = Number(parts.shift()); const dateString = parts.join('_');
+        bulkSelectionAnchor = null;
         if (dateString) originalCycleCellStatusForBulk(employeeIndex, dateString);
       }
       bulkDragLastKey = '';
     }, true);
-    document.addEventListener('pointercancel', function() { bulkDragActive = false; bulkSelectedCells.clear(); bulkDragLastKey = ''; }, true);
+    document.addEventListener('pointercancel', function() { bulkDragActive = false; bulkSelectedCells.clear(); bulkSelectionAnchor = null; bulkDragLastKey = ''; }, true);
+    document.addEventListener('contextmenu', function(event) {
+      const cell = getBulkCellTarget(event.target); if (!cell) return;
+      const details = getBulkCellDetails(cell); if (!details) return;
+      if (!bulkSelectedCells.has(details.key)) {
+        bulkSelectedCells.clear(); markBulkCell(cell, false); bulkSelectionAnchor = details; renderAttendanceTable();
+      }
+      if (!bulkSelectedCells.size) return;
+      event.preventDefault();
+      openBulkCellEditor();
+    }, true);
     document.addEventListener('click', function(event) {
       if (!bulkSuppressClick) return;
       bulkSuppressClick = false; event.preventDefault(); event.stopImmediatePropagation();
     }, true);
-    document.addEventListener('keydown', function(event) { if (event.key === 'Escape' && document.getElementById('bulkCellModal')) closeBulkCellEditor(); });
+    document.addEventListener('keydown', function(event) {
+      if (event.key !== 'Escape') return;
+      if (document.getElementById('bulkCellModal')) { closeBulkCellEditor(); return; }
+      if (bulkSelectedCells.size) { bulkSelectedCells.clear(); bulkSelectionAnchor = null; renderAttendanceTable(); event.preventDefault(); }
+    });
 `;
   next=next.replace('    boot();',`${leaveSummaryScript}\n    boot();`);
   return next;
