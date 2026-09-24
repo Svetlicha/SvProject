@@ -781,9 +781,16 @@ function decorateInlineWorkFormHtml(html){
       if (!dateString || isDateLocked(dateString)) return null;
       return { employeeIndex, dateString, key: bulkCellKey(employeeIndex, dateString) };
     }
+    function getBulkSelectedEmployeeIndex() {
+      if (!bulkSelectedCells.size) return null;
+      if (bulkSelectionAnchor) return bulkSelectionAnchor.employeeIndex;
+      return Number(String(Array.from(bulkSelectedCells)[0]).split('_')[0]);
+    }
     function markBulkCell(element, toggle) {
       const details = getBulkCellDetails(element);
       if (!details) return null;
+      const selectedEmployeeIndex = getBulkSelectedEmployeeIndex();
+      if (selectedEmployeeIndex !== null && selectedEmployeeIndex !== details.employeeIndex) return null;
       if (toggle && bulkSelectedCells.has(details.key)) {
         bulkSelectedCells.delete(details.key);
         element.classList.remove('cell-bulk-selected');
@@ -797,9 +804,7 @@ function decorateInlineWorkFormHtml(html){
       const target = getBulkCellDetails(element);
       if (!target) return null;
       if (!bulkSelectionAnchor || bulkSelectionAnchor.employeeIndex !== target.employeeIndex) {
-        bulkSelectedCells.clear();
-        markBulkCell(element, false);
-        return target;
+        return null;
       }
       const start = new Date(bulkSelectionAnchor.dateString + 'T00:00:00');
       const end = new Date(target.dateString + 'T00:00:00');
@@ -855,6 +860,7 @@ function decorateInlineWorkFormHtml(html){
     document.addEventListener('contextmenu', function(event) {
       const cell = getBulkCellTarget(event.target); if (!cell) return;
       const details = getBulkCellDetails(cell); if (!details) return;
+      if (bulkSelectedCells.size && getBulkSelectedEmployeeIndex() !== details.employeeIndex) return;
       if (!bulkSelectedCells.has(details.key)) {
         bulkSelectedCells.clear(); markBulkCell(cell, false); bulkSelectionAnchor = details; renderAttendanceTable();
       }
