@@ -722,8 +722,19 @@ function decorateInlineWorkFormHtml(html){
       closeBulkCellEditor();
       const modal = document.createElement('div');
       modal.id = 'bulkCellModal'; modal.className = 'modal-backdrop active'; modal.addEventListener('click', function(event) { if (event.target === modal) closeBulkCellEditor(); });
-      modal.innerHTML = '<div class="modal form-bulk-modal" role="dialog" aria-modal="true" aria-label="Групова промяна" onclick="event.stopPropagation()"><div class="modal-header"><h3>Промени ' + bulkSelectedCells.size + ' избрани дни</h3><button type="button" class="icon-btn" onclick="closeBulkCellEditor()" aria-label="Затвори">×</button></div><div class="modal-body"><p class="bulk-modal-help">Избери само полетата, които искаш да промениш. При „Без промяна“ съществуващите данни остават такива, каквито са.</p><label class="field">Статус<select id="bulkCellStatus"><option value="">Без промяна</option><option value="work">Работа</option><option value="leave">О - отпуск</option><option value="off">П - почивка</option></select></label><label class="field">Часове<select id="bulkCellHours"><option value="">Без промяна</option><option value="4">4 часа</option><option value="6">6 часа</option><option value="8">8 часа</option></select></label></div><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeBulkCellEditor()">Отказ</button><button type="button" class="primary-btn" onclick="applyBulkCellChanges()">Приложи</button></div></div>';
+      modal.innerHTML = '<div class="modal form-bulk-modal" role="dialog" aria-modal="true" aria-label="Групова промяна" onclick="event.stopPropagation()"><div class="modal-header"><h3>Промени ' + bulkSelectedCells.size + ' избрани дни</h3><button type="button" class="icon-btn" onclick="closeBulkCellEditor()" aria-label="Затвори">×</button></div><div class="modal-body"><p class="bulk-modal-help">Избери само полетата, които искаш да промениш. При „Без промяна“ съществуващите данни остават такива, каквито са.</p><label class="field">Статус<select id="bulkCellStatus"><option value="">Без промяна</option><option value="work">Работа</option><option value="leave">О - отпуск</option><option value="off">П - почивка</option></select></label><label class="field">Часове<select id="bulkCellHours"><option value="">Без промяна</option><option value="4">4 часа</option><option value="6">6 часа</option><option value="8">8 часа</option></select></label></div><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeBulkCellEditor()">Отказ</button><button type="button" class="secondary-btn" style="color:#b91c1c;border-color:#fecaca" onclick="deleteBulkCellRecords()">Изтрий въведеното</button><button type="button" class="primary-btn" onclick="applyBulkCellChanges()">Приложи</button></div></div>';
       document.body.appendChild(modal);
+    }
+    function deleteBulkCellRecords() {
+      const count = bulkSelectedCells.size;
+      if (!count || !confirm('Да изтрия ли въведеното за ' + count + ' избрани дни?')) return;
+      bulkSelectedCells.forEach(function(key) {
+        const parts = key.split('_'); const employeeIndex = Number(parts.shift()); const dateString = parts.join('_');
+        if (!dateString || isDateLocked(dateString)) return;
+        delete state.records[recordKey(employeeIndex, dateString)];
+      });
+      bulkSelectedCells.clear(); bulkSelectionAnchor = null; bulkSelectionMode = false;
+      saveState(); closeBulkCellEditor(); renderAttendanceTable();
     }
     function applyBulkCellChanges() {
       const statusInput = document.getElementById('bulkCellStatus'); const hoursInput = document.getElementById('bulkCellHours');
@@ -742,7 +753,7 @@ function decorateInlineWorkFormHtml(html){
         } else if (hours !== null && record.status === 'work') record.hours = hours;
         if (record.status) state.records[recordKey(employeeIndex, dateString)] = record;
       });
-      bulkSelectedCells.clear(); bulkSelectionMode = false; saveState(); closeBulkCellEditor(); renderAttendanceTable();
+      bulkSelectedCells.clear(); bulkSelectionAnchor = null; bulkSelectionMode = false; saveState(); closeBulkCellEditor(); renderAttendanceTable();
     }
     const originalCycleCellStatusForBulk = cycleCellStatus;
     cycleCellStatus = function(employeeIndex, dateString) {
