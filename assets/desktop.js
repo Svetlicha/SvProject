@@ -612,11 +612,16 @@ function decorateInlineWorkFormHtml(html){
       if (checkbox) checkbox.checked = isOldLeave(getCellRecord(employeeIndex, dateString)); refreshOldLeaveOption();
     };
     toggleCellEditorFields = function() { originalToggleCellEditorFieldsForLeaveSummary(); refreshOldLeaveOption(); };
+    function getSelectedCellWorkHours() {
+      const input = document.getElementById("cellHours");
+      const hours = Number(input && input.value);
+      return hours === 4 || hours === 6 || hours === 8 ? hours : 8;
+    }
     saveCellRecord = function() {
       const employeeIndex = Number(document.getElementById("cellEmployeeIndex").value); const dateString = document.getElementById("cellDate").value;
       if (isDateLocked(dateString)) return; const status = document.getElementById("cellStatus").value; const key = recordKey(employeeIndex, dateString);
       if (!status) delete state.records[key];
-      else { const oldLeave = Boolean(document.getElementById("cellOldLeave") && document.getElementById("cellOldLeave").checked); state.records[key] = { status: status, hours: status === "work" ? Number(document.getElementById("cellHours").value || 8) : 0, hotelOverride: status === "work" ? document.getElementById("cellHotel").value : "", hotelOverride2: status === "work" ? document.getElementById("cellHotel2").value : "", replaces: status === "work" ? document.getElementById("cellReplaces").value : "", note: document.getElementById("cellNote").value.trim(), leaveFromPreviousYear: status === "leave" && oldLeave }; }
+      else { const oldLeave = Boolean(document.getElementById("cellOldLeave") && document.getElementById("cellOldLeave").checked); state.records[key] = { status: status, hours: status === "work" ? getSelectedCellWorkHours() : 0, hotelOverride: status === "work" ? document.getElementById("cellHotel").value : "", hotelOverride2: status === "work" ? document.getElementById("cellHotel2").value : "", replaces: status === "work" ? document.getElementById("cellReplaces").value : "", note: document.getElementById("cellNote").value.trim(), leaveFromPreviousYear: status === "leave" && oldLeave }; }
       saveState(); closeCellEditor(); renderAttendanceTable();
     };
 
@@ -722,7 +727,7 @@ function decorateInlineWorkFormHtml(html){
       closeBulkCellEditor();
       const modal = document.createElement('div');
       modal.id = 'bulkCellModal'; modal.className = 'modal-backdrop active'; modal.addEventListener('click', function(event) { if (event.target === modal) closeBulkCellEditor(); });
-      modal.innerHTML = '<div class="modal form-bulk-modal" role="dialog" aria-modal="true" aria-label="Групова промяна" onclick="event.stopPropagation()"><div class="modal-header"><h3>Промени ' + bulkSelectedCells.size + ' избрани дни</h3><button type="button" class="icon-btn" onclick="closeBulkCellEditor()" aria-label="Затвори">×</button></div><div class="modal-body"><p class="bulk-modal-help">Избери само полетата, които искаш да промениш. При „Без промяна“ съществуващите данни остават такива, каквито са.</p><label class="field">Статус<select id="bulkCellStatus"><option value="">Без промяна</option><option value="work">Работа</option><option value="leave">О - отпуск</option><option value="off">П - почивка</option></select></label><label class="field">Часове<select id="bulkCellHours"><option value="">Без промяна</option><option value="4">4 часа</option><option value="6">6 часа</option><option value="8">8 часа</option></select></label></div><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeBulkCellEditor()">Отказ</button><button type="button" class="secondary-btn" style="color:#b91c1c;border-color:#fecaca" onclick="deleteBulkCellRecords()">Изтрий въведеното</button><button type="button" class="primary-btn" onclick="applyBulkCellChanges()">Приложи</button></div></div>';
+      modal.innerHTML = '<div class="modal form-bulk-modal" role="dialog" aria-modal="true" aria-label="Групова промяна" onclick="event.stopPropagation()"><div class="modal-header"><h3>Промени ' + bulkSelectedCells.size + ' избрани дни</h3><button type="button" class="icon-btn" onclick="closeBulkCellEditor()" aria-label="Затвори">×</button></div><div class="modal-body"><p class="bulk-modal-help">Избери само полетата, които искаш да промениш. При „Без промяна“ съществуващите данни остават такива, каквито са. Изборът само на 4, 6 или 8 часа автоматично отбелязва „Работа“.</p><label class="field">Статус<select id="bulkCellStatus"><option value="">Без промяна</option><option value="work">Работа</option><option value="leave">О - отпуск</option><option value="off">П - почивка</option></select></label><label class="field">Часове<select id="bulkCellHours"><option value="">Без промяна</option><option value="4">4 часа</option><option value="6">6 часа</option><option value="8">8 часа</option></select></label></div><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeBulkCellEditor()">Отказ</button><button type="button" class="secondary-btn" style="color:#b91c1c;border-color:#fecaca" onclick="deleteBulkCellRecords()">Изтрий въведеното</button><button type="button" class="primary-btn" onclick="applyBulkCellChanges()">Приложи</button></div></div>';
       document.body.appendChild(modal);
     }
     function deleteBulkCellRecords() {
@@ -739,7 +744,8 @@ function decorateInlineWorkFormHtml(html){
     function applyBulkCellChanges() {
       const statusInput = document.getElementById('bulkCellStatus'); const hoursInput = document.getElementById('bulkCellHours');
       if (!statusInput || !hoursInput) return;
-      const status = statusInput.value; const hours = hoursInput.value === '' ? null : Number(hoursInput.value);
+      const hours = hoursInput.value === '' ? null : Number(hoursInput.value);
+      const status = statusInput.value || (hours !== null ? 'work' : '');
       if (!status && hours === null) { closeBulkCellEditor(); return; }
       bulkSelectedCells.forEach(function(key) {
         const parts = key.split('_'); const employeeIndex = Number(parts.shift()); const dateString = parts.join('_');
