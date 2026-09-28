@@ -6908,8 +6908,6 @@ function renderHotelNights(){
   const revenueTargetYearValue=hotelRevenueTargetsTotal(selected,hotelNightsYear);
   const revenueYearValue=hotelRevenueTotal(selected,hotelNightsYear);
   const previousNightsYear=hotelNightsYear-1;
-  const guestPreviousYearValue=hotelNightsTotal(selected,previousNightsYear);
-  const roomPreviousYearValue=hotelRoomNightsTotal(selected,previousNightsYear);
   const revenuePreviousYearValue=hotelRevenueTotal(selected,previousNightsYear);
   const guestYearTotal=formatHotelNightsNumber(guestYearValue);
   const roomYearTotal=formatHotelNightsNumber(roomYearValue);
@@ -6936,13 +6934,11 @@ function renderHotelNights(){
       <div class="hotel-nights-summary">
         <span class="hotel-nights-pill">Нощувки гости: <span data-hotel-nights-total="${escapeAttr(selected.id)}" data-year="${hotelNightsYear}">${guestYearTotal}</span></span>
         <span class="hotel-nights-pill">Нощувки стаи: <span data-hotel-room-nights-total="${escapeAttr(selected.id)}" data-year="${hotelNightsYear}">${roomYearTotal}</span></span>
-        <span class="hotel-nights-pill target-progress">${hotelNightsYear}-${previousNightsYear} гости: ${hotelYearDifferenceMarkup(guestYearValue,guestPreviousYearValue,formatHotelNightsNumber,`data-hotel-nights-difference-total="${escapeAttr(selected.id)}" data-year="${hotelNightsYear}"`)}</span>
-        <span class="hotel-nights-pill target-progress">${hotelNightsYear}-${previousNightsYear} стаи: ${hotelYearDifferenceMarkup(roomYearValue,roomPreviousYearValue,formatHotelNightsNumber,`data-hotel-room-nights-difference-total="${escapeAttr(selected.id)}" data-year="${hotelNightsYear}"`)}</span>
         <span class="hotel-nights-pill">Таргет нощувки: <span data-hotel-room-target-total="${escapeAttr(selected.id)}" data-year="${hotelNightsYear}">${targetYearTotal}</span></span>
         <span class="hotel-nights-pill target-progress">Разлика нощувки: ${hotelTargetProgressMarkup(roomYearValue,targetYearValue,formatHotelNightsNumber,`data-hotel-room-target-remaining-total="${escapeAttr(selected.id)}" data-year="${hotelNightsYear}"`)}</span>
         <span class="hotel-nights-pill">Таргет приходи: <span data-hotel-revenue-target-total="${escapeAttr(selected.id)}" data-year="${hotelNightsYear}">${revenueTargetYearTotal}</span></span>
         <span class="hotel-nights-pill">Приходи: <span data-hotel-revenue-total="${escapeAttr(selected.id)}" data-year="${hotelNightsYear}">${revenueYearTotal}</span></span>
-        <span class="hotel-nights-pill target-progress">${hotelNightsYear}-${previousNightsYear} приходи: ${hotelYearDifferenceMarkup(revenueYearValue,revenuePreviousYearValue,formatHotelRevenue,`data-hotel-revenue-difference-total="${escapeAttr(selected.id)}" data-year="${hotelNightsYear}"`)}</span>
+        <span class="hotel-nights-pill target-progress year-revenue-difference">${hotelNightsYear}-${previousNightsYear} приходи: ${hotelYearDifferenceMarkup(revenueYearValue,revenuePreviousYearValue,formatHotelRevenue,`data-hotel-revenue-difference-total="${escapeAttr(selected.id)}" data-year="${hotelNightsYear}"`)}</span>
         <span class="hotel-nights-pill target-progress">Разлика приходи: ${hotelTargetProgressMarkup(revenueYearValue,revenueTargetYearValue,formatHotelRevenue,`data-hotel-revenue-target-remaining-total="${escapeAttr(selected.id)}" data-year="${hotelNightsYear}"`)}</span>
         <span class="hotel-nights-pill">ADR на човек: <span data-hotel-person-adr-total="${escapeAttr(selected.id)}" data-year="${hotelNightsYear}">${personAdrYear}</span></span>
         <span class="hotel-nights-pill">ADR на стая: <span data-hotel-room-adr-total="${escapeAttr(selected.id)}" data-year="${hotelNightsYear}">${roomAdrYear}</span></span>
