@@ -6,7 +6,7 @@
       'assets/section-loader.js',
       'assets/algara-prices-v26-lite-data.js',
       'assets/algara-lite-calculator.js',
-      'assets/desktop.js?v=20260928-nights-year-comparison-1'
+      'assets/desktop.js?v=20260928-nights-revenue-comparison-1'
     ],
     mobile: [
       'assets/section-loader.js',
