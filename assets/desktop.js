@@ -1800,7 +1800,7 @@ function selectCalendarDate(iso){
   const hotelNightsRecordKey=input.dataset&&input.dataset.hotelDayDateEditor?input.dataset.hotelDayDateEditor:'';
   if(hotelNightsRecordKey&&hotelNightsDialog&&hotelNightsDialog.hotelId){
     input.dataset.dateIso=iso;
-    input.value=isoToDisplay(iso);
+    input.value=iso.split('-').reverse().join('.');
     input.classList.remove('invalid-date');
     suppressHotelNightsDialogCloseUntil=Date.now()+500;
     closeDatePicker();
@@ -6347,15 +6347,15 @@ function updateHotelDailyMetric(hotelId,recordKey,value,metric){
   updateHotelNightsMonthUI(hotel,year,month);
   scheduleSilentStateSave();
 }
-function hotelNightsDateWithinYear(date,year){
+function hotelNightsValidDate(date){
   const value=String(date||'');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
-  return Number(value.slice(0,4))===Number(year);
+  const [year,month,day]=value.split('-').map(Number);
+  const parsed=new Date(year,month-1,day);
+  return parsed.getFullYear()===year&&parsed.getMonth()===month-1&&parsed.getDate()===day;
 }
-function hotelNightsDefaultAddDate(year,month){
-  const today=todayISO();
-  if(hotelNightsDateWithinYear(today,year))return today;
-  return `${year}-${String(month).padStart(2,'0')}-01`;
+function hotelNightsDefaultAddDate(){
+  return todayISO();
 }
 function hotelDailyRecordHasValues(hotel,recordKey){
   return ['room','guest','revenue'].some(metric=>String(hotelMetricDailyData(hotel,metric)[recordKey]||'').trim()!=='');
@@ -6380,8 +6380,8 @@ function cancelHotelNightsDateEdit(){
 function changeHotelNightsRecordDate(hotelId,oldRecordKey,newDate){
   if(!hotelNightsDialog)return;
   const year=hotelNightsDialog.year,month=hotelNightsDialog.month;
-  if(!hotelNightsDateWithinYear(newDate,year)){
-    alert('Избери дата от същата година.');
+  if(!hotelNightsValidDate(newDate)){
+    alert('Избери валидна дата.');
     return;
   }
   const newRecordKey=hotelNightsRecordKeyForDate(year,month,newDate);
@@ -6600,7 +6600,7 @@ function hotelNightsMonthDateButtons(hotel,year,month,selectedRecordKey){
   const makeButton=recordKey=>{
     const date=hotelNightsRecordDateFromKey(recordKey);
     const parts=date.split('-');
-    const compact=parts.length===3?`${parts[2]}.${parts[1]}`:date;
+    const compact=parts.length===3?`${parts[2]}.${parts[1]}${Number(parts[0])!==Number(year)?'.'+parts[0]:''}`:date;
     const full=parts.length===3?`${parts[2]}.${parts[1]}.${parts[0]}`:date;
     const isLatest=recordKey===latest;
     const title=`Покажи стойностите към ${full}${isLatest?' (последно въведено)':''}`;
@@ -6641,7 +6641,7 @@ function hotelNightsDayRow(hotel,recordKey,isEntry){
   const firstDate=`${targetYear}-01-01`;
   const lastDate=`${targetYear}-12-31`;
   const dateControl=editing
-    ? `<div class="hotel-nights-day-date editing"><input type="text" inputmode="numeric" readonly data-calendar="true" data-calendar-months="1" data-date-iso="${escapeAttr(date)}" value="${escapeAttr(isoToDisplay(date))}" data-hotel-day-date-editor="${escapeAttr(recordKey)}" /><button type="button" class="icon-btn hotel-nights-date-save" data-hotel-save-day-date="${escapeAttr(recordKey)}" aria-label="Запази дата">✓</button><button type="button" class="icon-btn hotel-nights-date-cancel" data-hotel-cancel-day-date aria-label="Откажи">×</button></div>`
+    ? `<div class="hotel-nights-day-date editing"><input type="text" inputmode="numeric" readonly data-calendar="true" data-calendar-months="1" data-date-iso="${escapeAttr(date)}" value="${escapeAttr(label)}" data-hotel-day-date-editor="${escapeAttr(recordKey)}" /><button type="button" class="icon-btn hotel-nights-date-save" data-hotel-save-day-date="${escapeAttr(recordKey)}" aria-label="Запази дата">✓</button><button type="button" class="icon-btn hotel-nights-date-cancel" data-hotel-cancel-day-date aria-label="Откажи">×</button></div>`
     : `<div class="hotel-nights-day-date"><span class="hotel-nights-date-label"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(weekday)}</span></span><button type="button" class="icon-btn hotel-nights-date-edit" data-hotel-edit-day-date="${escapeAttr(recordKey)}" aria-label="Редактирай дата" title="Редактирай дата">✎</button><button type="button" class="icon-btn hotel-nights-date-delete" data-hotel-delete-day-date="${escapeAttr(recordKey)}" aria-label="Изтрий запис" title="Изтрий запис">🗑️</button></div>`;
   return `<div class="hotel-nights-day-row${date===today?' today':''}${isEntry?' entry':''}" data-hotel-day-row="${escapeAttr(recordKey)}">
     ${dateControl}
@@ -6662,7 +6662,7 @@ function renderHotelNightsDialog(hotel,year,month){
   const monthText=monthNames[month-1];
   return `<div class="hotel-nights-dialog-backdrop" data-close-hotel-nights-dialog>
     <div class="hotel-nights-dialog" role="dialog" aria-modal="true" aria-label="${escapeAttr(monthText+' '+year)}" onclick="event.stopPropagation()">
-      <div class="hotel-nights-dialog-head"><div><strong>${escapeHtml(monthText)} ${year}</strong><span>Добави дата и попълни натрупаното към нея. Датата може да е от друг месец в същата година.</span></div><button type="button" class="icon-btn" data-close-hotel-nights-dialog aria-label="Затвори">×</button></div>
+      <div class="hotel-nights-dialog-head"><div><strong>${escapeHtml(monthText)} ${year}</strong><span>Добави дата и попълни натрупаното към нея. Датата може да е и от друга година.</span></div><button type="button" class="icon-btn" data-close-hotel-nights-dialog aria-label="Затвори">×</button></div>
       <div class="hotel-nights-dialog-summary" data-hotel-nights-dialog-summary></div>
       <div class="hotel-nights-add-datebar">
         <button type="button" class="primary small" data-hotel-nights-add-date="${addDate}">Добави дата</button>
