@@ -466,6 +466,11 @@ function decorateInlineWorkFormHtml(html){
     .form-bulk-modal { width:min(460px,100%); }
     .form-bulk-modal .modal-body { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .form-bulk-modal .modal-body .bulk-modal-help { grid-column:1 / -1; margin:0; color:#64748b; font-size:12px; line-height:1.4; }
+    .cell-bulk-section { grid-column:1 / -1; border:1px solid #cbd5e1; border-radius:6px; padding:10px; margin:0; }
+    .cell-bulk-section legend { font-size:13px; font-weight:800; padding:0 5px; }
+    .cell-bulk-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .cell-bulk-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+    .cell-bulk-count { font-size:12px; color:#475569; margin:0 0 8px; }
     @media (max-width: 760px) { .bulk-selection-bar { align-items:flex-start; } .form-bulk-modal .modal-body { grid-template-columns:1fr; } }
     #employeeSettings .employee-row { grid-template-columns: 34px minmax(160px, 1fr) 132px 132px 96px; }
     .employee-release-date { border-color: #fbbf24 !important; background: #fffbeb !important; }
@@ -476,6 +481,7 @@ function decorateInlineWorkFormHtml(html){
 `;
   next=next.replace('\n    .cell-btn {\n',`${noteMarkerCss}\n    .cell-btn {\n`);
   next=next.replace('            <input id="cellHours" type="number" min="0" max="24" step="0.5" value="8" />','            <select id="cellHours">\n              <option value="4">4 часа</option>\n              <option value="6">6 часа</option>\n              <option value="8" selected>8 часа</option>\n            </select>');
+  next=next.replace('          <label class="field">\n            Хотел 1', '          <fieldset id="cellBulkSection" class="cell-bulk-section" disabled><legend>Групова промяна</legend><p id="cellBulkCount" class="cell-bulk-count"></p><div class="cell-bulk-grid"><label class="field">Статус<select id="bulkCellStatus"><option value="">Без промяна</option><option value="work">Работа</option><option value="leave">О - отпуск</option><option value="off">П - почивка</option></select></label><label class="field">Часове<select id="bulkCellHours"></select></label></div><div class="cell-bulk-actions"><button type="button" class="primary-btn" onclick="applyBulkCellChanges()">Приложи към избраните</button><button type="button" class="danger-btn" onclick="deleteBulkCellRecords()">Изтрий избраните</button></div></fieldset>\n          <label class="field">\n            Хотел 1');
   next=next.replace('const employee = state.employees[i] || { name: "", hireDate: "", showHotel: true };','const employee = state.employees[i] || { name: "", hireDate: "", releaseDate: "", showHotel: true };');
   next=next.replace('        if (!picker.contains(event.target)) {\n          closeDatePicker();\n        }', '        if (!event.composedPath().includes(picker)) {\n          closeDatePicker();\n        }');
   next=next.replace('          hireDate: emp.hireDate || "",\n          showHotel:', '          hireDate: emp.hireDate || "",\n          releaseDate: emp.releaseDate || "",\n          showHotel:');
@@ -619,6 +625,15 @@ function decorateInlineWorkFormHtml(html){
         hours.innerHTML = choices.map(function(value) { return '<option value="' + value + '">' + value + ' часа</option>'; }).join('');
         hours.value = choices.includes(Number(selectedHours)) ? selectedHours : '8';
       }
+      const group = document.getElementById('cellBulkSection');
+      if (group) {
+        const count = bulkSelectedCells.size;
+        group.disabled = count < 2;
+        document.getElementById('cellBulkCount').textContent = count > 1 ? 'Избрани дни: ' + count : 'Избери поне два дни.';
+        document.getElementById('bulkCellStatus').value = '';
+        const choices = isVictorEmployee(employeeIndex) ? [1, 2, 3, 4, 5, 6, 7, 8] : [4, 6, 8];
+        document.getElementById('bulkCellHours').innerHTML = '<option value="">Без промяна</option>' + choices.map(function(value) { return '<option value="' + value + '">' + value + ' часа</option>'; }).join('');
+      }
     };
     toggleCellEditorFields = function() { originalToggleCellEditorFieldsForLeaveSummary(); refreshOldLeaveOption(); };
     function isVictorEmployee(employeeIndex) {
@@ -755,22 +770,17 @@ function decorateInlineWorkFormHtml(html){
       if (bulkSelectedCells.has(key)) bulkSelectedCells.delete(key); else bulkSelectedCells.add(key);
       renderAttendanceTable();
     }
-    function closeBulkCellEditor() { const modal = document.getElementById('bulkCellModal'); if (modal) modal.remove(); }
+    const originalCloseCellEditorForBulk = closeCellEditor;
+    closeCellEditor = function() { originalCloseCellEditorForBulk(); if (bulkSelectedCells.size) { bulkSelectedCells.clear(); bulkSelectionAnchor = null; renderAttendanceTable(); } };
+    function closeBulkCellEditor() { closeCellEditor(); }
     function openBulkCellEditor() {
       if (!bulkSelectedCells.size) return;
-      closeBulkCellEditor();
-      const modal = document.createElement('div');
-      modal.id = 'bulkCellModal'; modal.className = 'modal-backdrop active'; modal.addEventListener('click', function(event) { if (event.target === modal) closeBulkCellEditor(); });
-      modal.innerHTML = '<div class="modal form-bulk-modal" role="dialog" aria-modal="true" aria-label="Групова промяна" onclick="event.stopPropagation()"><div class="modal-header"><h3>Промени ' + bulkSelectedCells.size + ' избрани дни</h3><button type="button" class="icon-btn" onclick="closeBulkCellEditor()" aria-label="Затвори">×</button></div><div class="modal-body"><p class="bulk-modal-help">Избери само полетата, които искаш да промениш. При „Без промяна“ съществуващите данни остават такива, каквито са. Изборът само на 4, 6 или 8 часа автоматично отбелязва „Работа“.</p><label class="field">Статус<select id="bulkCellStatus"><option value="">Без промяна</option><option value="work">Работа</option><option value="leave">О - отпуск</option><option value="off">П - почивка</option></select></label><label class="field">Часове<select id="bulkCellHours"><option value="">Без промяна</option><option value="4">4 часа</option><option value="6">6 часа</option><option value="8">8 часа</option></select></label></div><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeBulkCellEditor()">Отказ</button><button type="button" class="secondary-btn" style="color:#b91c1c;border-color:#fecaca" onclick="deleteBulkCellRecords()">Изтрий въведеното</button><button type="button" class="primary-btn" onclick="applyBulkCellChanges()">Приложи</button></div></div>';
-      if (isVictorEmployee(getBulkSelectedEmployeeIndex())) {
-        modal.querySelector('#bulkCellHours').innerHTML = '<option value="">Без промяна</option>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function(value) { return '<option value="' + value + '">' + value + ' часа</option>'; }).join('');
-        modal.querySelector('.bulk-modal-help').textContent = 'Избери само полетата, които искаш да промениш. При „Без промяна“ съществуващите данни остават. Изборът на часове отбелязва „Работа“.';
-      }
-      document.body.appendChild(modal);
+      const parts = String(Array.from(bulkSelectedCells)[0]).split('_');
+      openCellEditor(Number(parts.shift()), parts.join('_'));
     }
     function deleteBulkCellRecords() {
       const count = bulkSelectedCells.size;
-      if (!count || !confirm('Да изтрия ли въведеното за ' + count + ' избрани дни?')) return;
+      if (count < 2 || !confirm('Да изтрия ли въведеното за ' + count + ' избрани дни?')) return;
       bulkSelectedCells.forEach(function(key) {
         const parts = key.split('_'); const employeeIndex = Number(parts.shift()); const dateString = parts.join('_');
         if (!dateString || isDateLocked(dateString)) return;
@@ -780,6 +790,7 @@ function decorateInlineWorkFormHtml(html){
       saveState(); closeBulkCellEditor(); renderAttendanceTable();
     }
     function applyBulkCellChanges() {
+      if (bulkSelectedCells.size < 2) return;
       const statusInput = document.getElementById('bulkCellStatus'); const hoursInput = document.getElementById('bulkCellHours');
       if (!statusInput || !hoursInput) return;
       const hours = hoursInput.value === '' ? null : Number(hoursInput.value);
@@ -916,12 +927,9 @@ function decorateInlineWorkFormHtml(html){
       const cell = getBulkCellTarget(event.target); if (!cell) return;
       const details = getBulkCellDetails(cell); if (!details) return;
       if (bulkSelectedCells.size && getBulkSelectedEmployeeIndex() !== details.employeeIndex) return;
-      if (!bulkSelectedCells.has(details.key)) {
-        bulkSelectedCells.clear(); markBulkCell(cell, false); bulkSelectionAnchor = details; renderAttendanceTable();
-      }
-      if (!bulkSelectedCells.size) return;
       event.preventDefault();
-      openBulkCellEditor();
+      if (!bulkSelectedCells.has(details.key)) { bulkSelectedCells.clear(); bulkSelectionAnchor = null; }
+      openCellEditor(details.employeeIndex, details.dateString);
     }, true);
     document.addEventListener('click', function(event) {
       if (!bulkSuppressClick) return;
