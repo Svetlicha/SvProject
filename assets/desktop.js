@@ -613,7 +613,7 @@ function decorateInlineWorkFormHtml(html){
       const hours = document.getElementById("cellHours");
       if (hours) {
         const selectedHours = String(getCellRecord(employeeIndex, dateString).hours || 8);
-        const choices = isVictorEmployee(employeeIndex) ? [4, 8] : [4, 6, 8];
+        const choices = isVictorEmployee(employeeIndex) ? [1, 2, 3, 4, 5, 6, 7, 8] : [4, 6, 8];
         hours.innerHTML = choices.map(function(value) { return '<option value="' + value + '">' + value + ' часа</option>'; }).join('');
         hours.value = choices.includes(Number(selectedHours)) ? selectedHours : '8';
       }
@@ -630,9 +630,9 @@ function decorateInlineWorkFormHtml(html){
       const key = recordKey(employeeIndex, dateString);
       const current = getCellRecord(employeeIndex, dateString);
       if (!current.status) {
-        state.records[key] = { status: 'work', hours: 4, hotelOverride: '', hotelOverride2: '', replaces: '', note: '' };
-      } else if (current.status === 'work' && Number(current.hours) !== 8) {
-        state.records[key] = { ...current, hours: 8 };
+        state.records[key] = { status: 'work', hours: 1, hotelOverride: '', hotelOverride2: '', replaces: '', note: '' };
+      } else if (current.status === 'work' && Number(current.hours) < 8) {
+        state.records[key] = { ...current, hours: Number(current.hours) + 1 };
       } else if (current.status === 'work') {
         state.records[key] = { status: 'off', hours: 0, hotelOverride: '', hotelOverride2: '', replaces: '', note: current.note || '' };
       } else if (current.status === 'off') {
@@ -645,7 +645,7 @@ function decorateInlineWorkFormHtml(html){
     function getSelectedCellWorkHours(employeeIndex) {
       const input = document.getElementById("cellHours");
       const hours = Number(input && input.value);
-      if (isVictorEmployee(employeeIndex) && hours === 6) return 8;
+      if (isVictorEmployee(employeeIndex)) return Number.isInteger(hours) && hours >= 1 && hours <= 8 ? hours : 8;
       return hours === 4 || hours === 6 || hours === 8 ? hours : 8;
     }
     saveCellRecord = function() {
@@ -760,8 +760,8 @@ function decorateInlineWorkFormHtml(html){
       modal.id = 'bulkCellModal'; modal.className = 'modal-backdrop active'; modal.addEventListener('click', function(event) { if (event.target === modal) closeBulkCellEditor(); });
       modal.innerHTML = '<div class="modal form-bulk-modal" role="dialog" aria-modal="true" aria-label="Групова промяна" onclick="event.stopPropagation()"><div class="modal-header"><h3>Промени ' + bulkSelectedCells.size + ' избрани дни</h3><button type="button" class="icon-btn" onclick="closeBulkCellEditor()" aria-label="Затвори">×</button></div><div class="modal-body"><p class="bulk-modal-help">Избери само полетата, които искаш да промениш. При „Без промяна“ съществуващите данни остават такива, каквито са. Изборът само на 4, 6 или 8 часа автоматично отбелязва „Работа“.</p><label class="field">Статус<select id="bulkCellStatus"><option value="">Без промяна</option><option value="work">Работа</option><option value="leave">О - отпуск</option><option value="off">П - почивка</option></select></label><label class="field">Часове<select id="bulkCellHours"><option value="">Без промяна</option><option value="4">4 часа</option><option value="6">6 часа</option><option value="8">8 часа</option></select></label></div><div class="modal-actions"><button type="button" class="secondary-btn" onclick="closeBulkCellEditor()">Отказ</button><button type="button" class="secondary-btn" style="color:#b91c1c;border-color:#fecaca" onclick="deleteBulkCellRecords()">Изтрий въведеното</button><button type="button" class="primary-btn" onclick="applyBulkCellChanges()">Приложи</button></div></div>';
       if (isVictorEmployee(getBulkSelectedEmployeeIndex())) {
-        modal.querySelector('#bulkCellHours option[value="6"]').remove();
-        modal.querySelector('.bulk-modal-help').textContent = 'Избери само полетата, които искаш да промениш. При „Без промяна“ съществуващите данни остават. Изборът на 4 или 8 часа отбелязва „Работа“.';
+        modal.querySelector('#bulkCellHours').innerHTML = '<option value="">Без промяна</option>' + [1, 2, 3, 4, 5, 6, 7, 8].map(function(value) { return '<option value="' + value + '">' + value + ' часа</option>'; }).join('');
+        modal.querySelector('.bulk-modal-help').textContent = 'Избери само полетата, които искаш да промениш. При „Без промяна“ съществуващите данни остават. Изборът на часове отбелязва „Работа“.';
       }
       document.body.appendChild(modal);
     }
