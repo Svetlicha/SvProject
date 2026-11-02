@@ -477,6 +477,7 @@ function decorateInlineWorkFormHtml(html){
   next=next.replace('\n    .cell-btn {\n',`${noteMarkerCss}\n    .cell-btn {\n`);
   next=next.replace('            <input id="cellHours" type="number" min="0" max="24" step="0.5" value="8" />','            <select id="cellHours">\n              <option value="4">4 часа</option>\n              <option value="6">6 часа</option>\n              <option value="8" selected>8 часа</option>\n            </select>');
   next=next.replace('const employee = state.employees[i] || { name: "", hireDate: "", showHotel: true };','const employee = state.employees[i] || { name: "", hireDate: "", releaseDate: "", showHotel: true };');
+  next=next.replace('          hireDate: emp.hireDate || "",\n          showHotel:', '          hireDate: emp.hireDate || "",\n          releaseDate: emp.releaseDate || "",\n          showHotel:');
   next=next.replace('          <input id="empHire${i}" data-date-picker="1" value="${escapeAttr(formatDate(employee.hireDate || ""))}" placeholder="dd.mm.yyyy" title="Дата на назначаване" />\n          <label class="hotel-toggle"','          <input id="empHire${i}" data-date-picker="1" value="${escapeAttr(formatDate(employee.hireDate || ""))}" placeholder="Назначен от" title="Дата на назначаване" />\n          <input id="empRelease${i}" class="employee-release-date" data-date-picker="1" value="${escapeAttr(formatDate(employee.releaseDate || ""))}" placeholder="Освободен от" title="Дата на освобождаване" />\n          <label class="hotel-toggle"');
   next=next.replaceAll('        showHotel: document.getElementById(`empShowHotel${i}`).checked\n      }));','        showHotel: document.getElementById(`empShowHotel${i}`).checked,\n        releaseDate: parseBGDate(document.getElementById(`empRelease${i}`).value) || ""\n      }));');
   next=next.replace('      state.employees.forEach((emp, employeeIndex) => {\n        let totalHours = 0;','      state.employees.forEach((emp, employeeIndex) => {\n        if (!shouldShowEmployeeForAttendanceMonth(emp, year, month)) return;\n        let totalHours = 0;');
@@ -706,7 +707,7 @@ function decorateInlineWorkFormHtml(html){
     };
 
     saveWeeklyAssignments = function() {
-      const weekData = {};
+      const weekData = { ...(state.weeklyAssignments[state.selectedWeekStart] || {}) };
       state.employees.forEach(function(employee, index) {
         if (!shouldShowEmployeeForSelectedWeek(employee)) return;
         const primary = document.getElementById('weekHotel' + index);
@@ -716,6 +717,7 @@ function decorateInlineWorkFormHtml(html){
         const noteInput = document.getElementById('weekNote' + index);
         const note = noteInput ? noteInput.value.trim() : '';
         if (hotel || hotel2 || note) weekData[index] = { hotel: hotel, hotel2: hotel2, note: note };
+        else delete weekData[index];
       });
       state.weeklyAssignments[state.selectedWeekStart] = weekData;
       saveState(); renderWeeklyPanel(); applyFormScale(); renderAttendanceTable();
